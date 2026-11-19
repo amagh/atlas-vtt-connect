@@ -186,16 +186,20 @@ describe('dynamic lighting for online players', () => {
 });
 
 describe('the darkness on both players\' clients', () => {
-  it('is painted on the web page as one closed path over the map', () => {
+  it('is painted on the web page as one soft mask over the map, dark where it is dark', () => {
     const projected = projectLit(walled(), WALLED);
     const surface = new RecordingSurface();
     new FogLayer().draw(surface, frame(projected));
-    const paths = surface.layers[0]?.ops('paths') ?? [];
-    expect(paths).toHaveLength(1);
-    expect(paths[0]).toMatchObject({ closed: true, style: { erase: false } });
-    const [ring] = paths[0]!.paths;
-    expect(insideByNonzero(ring!, { x: 800, y: 400 })).toBe(true);
-    expect(insideByNonzero(ring!, { x: 300, y: 400 })).toBe(false);
+    expect(surface.layers[0]?.ops('paths') ?? []).toEqual([]);
+    const rasters = surface.layers[0]?.ops('raster') ?? [];
+    expect(rasters).toHaveLength(1);
+    const { image, width } = rasters[0]!;
+    const alphaAt = ({ x, y }: { x: number; y: number }): number => {
+      const scale = image.width / width;
+      return image.data[(Math.floor(y * scale) * image.width + Math.floor(x * scale)) * 4 + 3]!;
+    };
+    expect(alphaAt({ x: 800, y: 400 })).toBe(255);
+    expect(alphaAt({ x: 300, y: 400 })).toBe(0);
   });
 
   it('is an Atlas fog lasso in the Obsidian online scene, filled where it is dark', () => {

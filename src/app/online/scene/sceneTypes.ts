@@ -444,6 +444,12 @@ export interface PlayerDoor {
 export interface PlayerGlow {
   /** A PNG as a data URL (`data:image/png;base64,…`). */
   image: string;
+  /**
+   * The darkness players get drawn in place of the darkness fog's cell-stepped outline (`darkPixels`): a PNG data URL,
+   * black with a soft alpha, stretched over the map, its edge along the walls of the tokens' sight. Absent from an
+   * older GM, or where it would not fit; the darkness fog stays sent either way.
+   */
+  dark?: string;
 }
 
 export const PLAYER_MEASURE_SHAPES = ['ruler', 'circle', 'cone', 'square', 'line'] as const;

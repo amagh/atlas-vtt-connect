@@ -53,6 +53,8 @@ export const SCENE_LIMITS = {
    * snapshot shares, so a scene with its light still fits one.
    */
   glowImage: 64 * 1024,
+  /** The darkness mask's data URL (`PlayerGlow.dark`), in characters: with the light picture, still well within a message. */
+  darkImage: 96 * 1024,
   /** Doors players get of one scene. */
   doors: 1_000,
 } as const;

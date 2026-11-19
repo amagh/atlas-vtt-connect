@@ -1,7 +1,7 @@
 import { darknessOf, NO_DARKNESS, type Darkness } from './darknessFog';
 import type { WorldBounds } from './FogCoverage';
 import type { MapSize } from './sceneTypes';
-import type { AmbientLight, LightReach } from '../../../../packages/atlas-host/src/lighting/visionRules';
+import type { AmbientLight, LightReach, Sight } from '../../../../packages/atlas-host/src/lighting/visionRules';
 
 /**
  * The raster the darkness of a lit scene is read from: one flag per square cell, dark where
@@ -28,6 +28,8 @@ export interface FrameLight {
   readonly shown: Uint8Array;
   readonly ambient: AmbientLight;
   readonly reaches: readonly LightReach[];
+  /** The tokens' sight, walls cut out; absent from a host that hands out none, and the cells' edges stand. */
+  readonly sight?: Sight;
 }
 
 /** What a lit scene adds to the projection: which tokens players see, and the darkness over the map. */

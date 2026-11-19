@@ -94,8 +94,11 @@ export class LiveLighting {
     if (!given || !(given.seen instanceof Uint8Array) || given.seen.length !== cols * rows || !Array.isArray(given.reaches)) return null;
     const last = this.light;
     if (last && last.cols === cols && last.rows === rows && last.cellSize === cellSize && sameAmbient(last.ambient, given.ambient)
-      && last.reaches === given.reaches && sameBytes(last.seen, given.seen) && sameBytes(last.shown, shown)) return last;
-    this.light = Object.freeze({ cols, rows, cellSize, seen: given.seen.slice(), shown: shown.slice(), ambient: given.ambient, reaches: given.reaches });
+      && last.reaches === given.reaches && last.sight === given.sight && sameBytes(last.seen, given.seen) && sameBytes(last.shown, shown)) return last;
+    this.light = Object.freeze({
+      cols, rows, cellSize, seen: given.seen.slice(), shown: shown.slice(), ambient: given.ambient, reaches: given.reaches,
+      ...(given.sight ? { sight: given.sight } : {}),
+    });
     return this.light;
   }
 

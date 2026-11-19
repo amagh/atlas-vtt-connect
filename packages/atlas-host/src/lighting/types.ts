@@ -2,7 +2,7 @@
  * What the player visibility reader hands out, as Atlas's extension API names it (`@atlas-vtt/api-types`, which
  * Tabletop does not have): the same shapes, so Connect passes them on as its API's.
  */
-import type { AmbientLight, LightReach } from './visionRules';
+import type { AmbientLight, LightReach, Sight } from './visionRules';
 
 export type Disposer = () => void;
 
@@ -35,6 +35,8 @@ export interface PlayerLight {
   readonly seen: Uint8Array;
   readonly ambient: AmbientLight;
   readonly reaches: readonly LightReach[];
+  /** The sight the cells were worked out from, walls already cut out: where its edges run, seen ground ends. */
+  readonly sight: Sight;
 }
 
 export interface PlayerVisibilityOptions {

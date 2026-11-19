@@ -3,7 +3,7 @@ import { darknessRaster } from '../../../packages/atlas-host/src/lighting/darkne
 import type { LightReach } from '../../../packages/atlas-host/src/lighting/visionRules';
 import { LiveLighting } from '../../../src/app/online/scene/LiveLighting';
 import type { FrameLight } from '../../../src/app/online/scene/lightingFrame';
-import { DARK_SHADE, falloff, LIGHT_TINT, lightOverlay, lightSources, MEMORY_SHADE, overlayPixels, type OverlayPixels } from '../../../src/app/online/scene/lightOverlay';
+import { DARK_SHADE, darkPixels, falloff, LIGHT_TINT, lightOverlay, lightSources, MEMORY_SHADE, overlayPixels, type OverlayPixels } from '../../../src/app/online/scene/lightOverlay';
 import { diffScenes } from '../../../src/app/online/scene/sceneDiff';
 import { decodeControl } from '../../../src/app/online/protocol';
 import { createGlowLayer } from '../../../src/app/online/view/layers/glowLayer';
@@ -65,14 +65,21 @@ describe('the light overlay', () => {
     expect(at(pixels, 45, 48)[3]).toBeLessThan(Math.round(DARK_SHADE * 255));
   });
 
-  it('carries nothing of what players do not see: black where hidden, dimmed where only remembered', () => {
+  it('carries nothing of what players do not see: ambient dark where hidden, dimmed where only remembered', () => {
     const sources = lightSources({ lights: { l1: { x: 150, y: 48, emission: { color: '#00ff00' } } } });
     const pixels = overlayPixels(light([torch(150, 48)], { seen: (x) => x < 96, shown: (x) => x < 128 }), sources, MAP, 10)!;
-    expect(at(pixels, 150, 48)).toEqual([0, 0, 0, 255]);
+    expect(at(pixels, 150, 48)).toEqual([0, 0, 0, Math.round(DARK_SHADE * 255)]);
     expect(at(pixels, 110, 48)).toEqual([0, 0, 0, Math.round(MEMORY_SHADE * 255)]);
     const empty = overlayPixels(light([], { seen: (x) => x < 96, shown: (x) => x < 128 }), [], MAP, 10)!;
     // The light beyond their sight changes no pixel they get.
     expect(pixels.data).toEqual(empty.data);
+  });
+
+  it('lights the cells beside sight too, so light ends where its reach does rather than at a cell\'s edge', () => {
+    const near = overlayPixels(light([torch(90, 48)], { seen: (x) => x < 96, shown: (x) => x < 96 }), [], MAP, 10)!;
+    // One cell past sight (x 96–104) the torch still lights; two cells past, only the ambient dark.
+    expect(at(near, 100, 48)[3]).toBeLessThan(Math.round(DARK_SHADE * 255));
+    expect(at(near, 108, 48)[3]).toBe(Math.round(DARK_SHADE * 255));
   });
 
   it('leaves magical darkness unlit, whatever light falls in it', () => {
@@ -95,9 +102,10 @@ describe('the light overlay', () => {
     const objects = { lights: { l1: { x: 40, y: 48, emission: { color: '#ff0000' } } } };
     const first = lightOverlay(frameLight, objects, MAP, 10, encode);
     expect(lightOverlay(frameLight, objects, MAP, 10, encode)).toBe(first);
-    expect(encode).toHaveBeenCalledTimes(1);
-    lightOverlay(frameLight, { lights: { l1: { x: 40, y: 48, emission: { color: '#0000ff' } } } }, MAP, 10, encode);
+    // The light picture and the finer darkness, once each.
     expect(encode).toHaveBeenCalledTimes(2);
+    lightOverlay(frameLight, { lights: { l1: { x: 40, y: 48, emission: { color: '#0000ff' } } } }, MAP, 10, encode);
+    expect(encode).toHaveBeenCalledTimes(4);
     expect(lightOverlay(frameLight, objects, MAP, 10, () => null)).toBeNull();
   });
 });
@@ -188,7 +196,8 @@ describe('the light picture\'s size', () => {
       return `data:image/png;base64,${'A'.repeat(pixels.width > width ? 70_000 : 10)}`;
     };
     expect(lightOverlay(torchLight, {}, { width: 1920, height: 960 }, 10, fitsAt(128))).not.toBeNull();
-    expect(widths).toEqual([192, 128]);
+    // The light picture fits at 128, then the finer darkness at its first try.
+    expect(widths).toEqual([192, 128, 768]);
     widths.length = 0;
     expect(lightOverlay({ ...torchLight }, {}, { width: 1920, height: 960 }, 10, fitsAt(1))).toBeNull();
     expect(widths).toEqual([192, 128, 64]);
@@ -201,5 +210,57 @@ describe('a player joining a lit scene', () => {
     const mirror = new PlayerSceneMirror({ sendResync: () => undefined, onChange: () => undefined });
     mirror.receive({ v: 1, type: 'scene-snapshot', seq: 1, scene: sceneBody(playerScene({ glow })), fogParts: 0, drawingParts: 0 });
     expect(mirror.scene?.glow).toEqual(glow);
+  });
+});
+
+describe('the finer darkness', () => {
+  const SIGHT = { sees: { bright: 'normal', dim: 'normal', dark: 'normal', magicalDark: 'none' }, reveals: 'all', lineOfSight: true, precise: true } as const;
+  /** Seen ground below a wall rising one in two, y = x/2 + 64, on 32-pixel darkness cells; seen cells lie wholly below it. */
+  function walled(withSight = true): FrameLight {
+    const cellSize = 32;
+    const cols = 8;
+    const below = (x: number, y: number): boolean => y >= x / 2 + 64;
+    const seen = new Uint8Array(cols * cols);
+    for (let row = 0; row < cols; row++) {
+      for (let col = 0; col < cols; col++) {
+        const [x0, y0, x1, y1] = [col * cellSize, row * cellSize, (col + 1) * cellSize, (row + 1) * cellSize];
+        seen[row * cols + col] = below(x0, y0) && below(x1, y0) && below(x0, y1) && below(x1, y1) ? 1 : 0;
+      }
+    }
+    const polygon = [{ x: 0, y: 64 }, { x: 256, y: 192 }, { x: 256, y: 256 }, { x: 0, y: 256 }];
+    return {
+      cols, rows: cols, cellSize, seen, shown: seen.slice(), ambient: { ambient: 0 }, reaches: [],
+      ...(withSight ? { sight: { all: false, regions: [{ sense: SIGHT, origin: { x: 128, y: 240 }, radius: 1000, polygon }] } } : {}),
+    } as FrameLight;
+  }
+  const map = { width: 256, height: 256 };
+  /** Where the darkness ends going down each column: the first pixel left clear. */
+  const edgeOf = (pixels: OverlayPixels): number[] => Array.from({ length: pixels.width }, (_, x) => {
+    let y = 0;
+    while (y < pixels.height && at(pixels, x, y)[3] > 0) y++;
+    return y;
+  });
+
+  it('follows the wall the tokens\' sight stops at, not the stairs of the cells', () => {
+    const edge = edgeOf(darkPixels(walled(), map, 8, 256)!);
+    // Its distance from the wall (y = x/2 + 64) stays the same all along it: the edge runs parallel to the wall.
+    const offsets = edge.slice(40, 216).map((y, index) => y - ((40 + index) / 2 + 64));
+    expect(Math.max(...offsets) - Math.min(...offsets)).toBeLessThanOrEqual(2);
+    // Close to the wall: the seen side clear, little of the far side through the blur.
+    expect(Math.max(...offsets.map(Math.abs))).toBeLessThanOrEqual(8);
+    // Without the sight to read, the cells decide: the edge drifts from the wall with their stairs.
+    const stepped = edgeOf(darkPixels(walled(false), map, 8, 256)!).slice(40, 216).map((y, index) => y - ((40 + index) / 2 + 64));
+    expect(Math.max(...stepped) - Math.min(...stepped)).toBeGreaterThan(Math.max(...offsets) - Math.min(...offsets));
+  });
+
+  it('leaves the ground the tokens see clear, and stays dark across the wall', () => {
+    const pixels = darkPixels(walled(), map, 8, 256)!;
+    expect(at(pixels, 128, 240)[3]).toBe(0);
+    expect(at(pixels, 128, 20)[3]).toBeGreaterThanOrEqual(250);
+  });
+
+  it('is sent with the light picture, where it fits', () => {
+    const encode = (pixels: OverlayPixels) => `data:image/png;base64,${pixels.width}AA`;
+    expect(lightOverlay(walled(), {}, map, 10, encode)?.dark).toBe('data:image/png;base64,768AA');
   });
 });

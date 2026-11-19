@@ -2,13 +2,16 @@
  * The light of a lit scene as players get it (`PlayerGlow`): a small picture over the map, worked out on the GM's
  * side from the light Atlas hands out (`FrameLight`) and the colours of the scene's lights and carried lights.
  *
- * Only cells a token's sight shows now get light: a cell only the explored memory shows is dimmed, and one the window
- * does not show is black (the darkness fog covers it anyway). So the picture carries nothing of what players do not
- * see: no light, colour or wall beyond their sight. Where a cell is seen, the darker its light the more black is laid
+ * Only cells a token's sight shows now, and those beside them, get light: so light ends where its reach does (cut by the
+ * walls), not at a cell's edge. A cell only the explored memory shows is dimmed, and one further from sight takes the
+ * scene's ambient light alone, as if no light reached it (the darkness fog covers it; under the fog's soft edge it
+ * shades on smoothly rather than in cell-sized steps). So the picture carries nothing of what players do not see: no
+ * light, colour or wall beyond the cells around their sight. Where a cell is seen, the darker its light the more black is laid
  * over it (a token seeing in the dark still sees, dimly), and the lights reaching it tint it with their colours.
  */
-import { insideSpans } from '../../../../packages/atlas-host/src/lighting/darknessRaster';
+import { insideSpans, sightRaster } from '../../../../packages/atlas-host/src/lighting/darknessRaster';
 import type { LightReach, Polygon } from '../../../../packages/atlas-host/src/lighting/visionRules';
+import { softenMask } from '../view/layers/softDarkness';
 import type { FrameLight } from './lightingFrame';
 import { SCENE_LIMITS } from './sceneLimits';
 import type { MapSize, PlayerGlow } from './sceneTypes';
@@ -24,6 +27,13 @@ export const DARK_SHADE = 0.78;
 export const MEMORY_SHADE = 0.6;
 /** How strongly a light's colour tints what it lights, at most. */
 export const LIGHT_TINT = 0.32;
+/**
+ * The darkness mask's long side, in pixels (`darkPixels`), fewer where its PNG would not fit `SCENE_LIMITS.darkImage`:
+ * finer than the darkness cells, so the edge seen ground makes along a wall follows the wall.
+ */
+export const DARK_CELLS_PER_SIDE = [768, 512, 384] as const;
+/** The finer darkness's blur, as a share of a grid cell: a soft edge, and little of the dark side through it. */
+export const DARK_SOFTNESS = 0.15;
 
 /** A light's colour (0–255 each) and strength, where the scene has a light or a carried light. */
 export interface LightSource {
@@ -157,6 +167,9 @@ export function overlayPixels(light: FrameLight, sources: readonly LightSource[]
       blue[index]! += given * source.b;
     });
   }
+  const nearSight = besideSeen(light);
+  // What a cell away from sight shows: the scene's ambient light alone, whatever lights stand there.
+  const away = Math.round(DARK_SHADE * (1 - Math.min(1, Math.max(0, light.ambient.ambient))) * 255);
   const data = new Uint8ClampedArray(count * 4);
   for (let row = 0; row < grid.rows; row++) {
     const cellRow = Math.floor(((row + 0.5) * size) / light.cellSize);
@@ -165,12 +178,8 @@ export function overlayPixels(light: FrameLight, sources: readonly LightSource[]
       const cellCol = Math.floor(((col + 0.5) * size) / light.cellSize);
       const cell = cellRow < light.rows && cellCol < light.cols ? cellRow * light.cols + cellCol : -1;
       const out = index * 4;
-      if (cell < 0 || light.shown[cell] !== 1) {
-        data[out + 3] = 255;
-        continue;
-      }
-      if (light.seen[cell] !== 1) {
-        data[out + 3] = Math.round(MEMORY_SHADE * 255);
+      if (cell < 0 || nearSight[cell] !== 1) {
+        data[out + 3] = light.shown[cell] === 1 ? Math.round(MEMORY_SHADE * 255) : away;
         continue;
       }
       const base = ambient[index]!;
@@ -193,6 +202,49 @@ export function overlayPixels(light: FrameLight, sources: readonly LightSource[]
 /** What `encodePng` uses of a document: a canvas, never put on the page. */
 export interface CanvasDocument {
   createElement(tag: 'canvas'): HTMLCanvasElement;
+}
+
+/** The cells a token's sight shows now, and every cell beside one of them (diagonals too). */
+function besideSeen({ cols, rows, seen }: FrameLight): Uint8Array {
+  const near = new Uint8Array(cols * rows);
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      if (seen[row * cols + col] !== 1) continue;
+      for (let r = Math.max(0, row - 1); r <= Math.min(rows - 1, row + 1); r++) {
+        for (let c = Math.max(0, col - 1); c <= Math.min(cols - 1, col + 1); c++) near[r * cols + c] = 1;
+      }
+    }
+  }
+  return near;
+}
+
+/**
+ * Where players see the map, finer than the darkness cells, as black with a soft alpha (`softenMask`): clear where a
+ * token's sight shows the map now, worked out again on the mask's own pixels by the same rules (`sightRaster`), so its
+ * edge follows walls and the reach of light rather than cell-sized stairs; clear over a cell only the explored memory
+ * shows; dark everywhere else. Without the sight to read, the cells decide alone. `softness`: the blur's spread, in world
+ * pixels.
+ */
+export function darkPixels(light: FrameLight, map: MapSize, softness: number, cellsPerSide: number = DARK_CELLS_PER_SIDE[0]): OverlayPixels | null {
+  if (!(map.width > 0) || !(map.height > 0) || !(light.cellSize > 0)) return null;
+  const size = Math.max(map.width, map.height) / cellsPerSide;
+  const fine = light.sight ? sightRaster({ sight: light.sight, ambient: light.ambient, reaches: light.reaches }, map, size) : null;
+  const cols = fine?.cols ?? Math.max(1, Math.ceil(map.width / size));
+  const rows = fine?.rows ?? Math.max(1, Math.ceil(map.height / size));
+  const mask = new Float32Array(cols * rows).fill(1);
+  for (let row = 0; row < rows; row++) {
+    const cellRow = Math.floor(((row + 0.5) * size) / light.cellSize);
+    for (let col = 0; col < cols; col++) {
+      const index = row * cols + col;
+      const cellCol = Math.floor(((col + 0.5) * size) / light.cellSize);
+      if (cellRow >= light.rows || cellCol >= light.cols) continue;
+      const cell = cellRow * light.cols + cellCol;
+      const remembered = light.shown[cell] === 1 && light.seen[cell] !== 1;
+      const seen = fine ? fine.seen[index] === 1 : light.shown[cell] === 1;
+      if (remembered || seen) mask[index] = 0;
+    }
+  }
+  return softenMask(mask, cols, rows, Math.max(1, Math.round(softness / size)));
 }
 
 /** The pixels as a PNG data URL through a canvas; null where none can be made (no DOM, no 2D context). */
@@ -236,7 +288,17 @@ export function lightOverlay(light: FrameLight, objects: { lights?: unknown; tok
       break;
     }
   }
-  const lighting = image ? Object.freeze({ image }) : null;
+  let dark: string | null = null;
+  for (const cells of image ? DARK_CELLS_PER_SIDE : []) {
+    const pixels = darkPixels(light, map, within * DARK_SOFTNESS, cells);
+    const encoded = pixels ? encode(pixels) : null;
+    if (!encoded) break;
+    if (encoded.length <= SCENE_LIMITS.darkImage) {
+      dark = encoded;
+      break;
+    }
+  }
+  const lighting = image ? Object.freeze({ image, ...(dark ? { dark } : {}) }) : null;
   made.set(light, { sources: key, width: map.width, height: map.height, lighting });
   return lighting;
 }

@@ -9,7 +9,7 @@ import type { PlayerLayer } from './layerTypes';
 /** Decodes a data URL to an image; tests pass their own. */
 export type GlowDecoder = (url: string) => Promise<HTMLImageElement | ImageBitmap>;
 
-const decodeImage: GlowDecoder = async (url) => {
+export const decodeImage: GlowDecoder = async (url) => {
   const image = new Image();
   image.src = url;
   await image.decode();

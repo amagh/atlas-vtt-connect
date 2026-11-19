@@ -320,7 +320,8 @@ function isPlayerHandout(value: unknown): boolean {
 const PNG_DATA_URL = /^data:image\/png;base64,[A-Za-z0-9+/]+={0,2}$/;
 
 function isPlayerGlow(value: unknown): boolean {
-  return isFields(value) && typeof value.image === 'string' && value.image.length <= SCENE_LIMITS.glowImage && PNG_DATA_URL.test(value.image);
+  return isFields(value) && typeof value.image === 'string' && value.image.length <= SCENE_LIMITS.glowImage && PNG_DATA_URL.test(value.image)
+    && (value.dark === undefined || (typeof value.dark === 'string' && value.dark.length <= SCENE_LIMITS.darkImage && PNG_DATA_URL.test(value.dark)));
 }
 
 function isPlayerDoors(value: unknown): boolean {
