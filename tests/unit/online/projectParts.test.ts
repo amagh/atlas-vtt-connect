@@ -149,7 +149,7 @@ describe('initiative projection', () => {
   };
   const visible = new Set(['goblin', 'orc']);
 
-  const goblin = { id: 'goblin', kind: 'character', x: 0, y: 0, imagePath: '', resources: { hp: { current: 5, max: 7 } } } as unknown as Character;
+  const goblin = { id: 'goblin', kind: 'character', showNameplate: true, x: 0, y: 0, imagePath: '', resources: { hp: { current: 5, max: 7 } } } as unknown as Character;
   const orc = { ...goblin, id: 'orc', resources: { hp: { current: 7, max: 7 } } } as Character;
   const objects = { tokens: { goblin, orc }, fog: {}, texts: {}, drawings: {} };
   const hp = (visibleToPlayers: boolean): ResourceDefinition[] => [

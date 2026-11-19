@@ -48,6 +48,8 @@ const TOKEN_CHECKS: Checks<KeysOfUnion<TokenEntity>> = {
     for (const token of Object.values(t.full.input.objects.tokens)) expect(token).not.toHaveProperty('isHidden');
   },
   name: field('hero', 'name', 'Anna'),
+  // Used, not passed on: a shown nameplate arrives as a sent name, which the converter shows (`showNameplate` set).
+  showNameplate: (t) => expect(tokenOf(t.full, 'hero').showNameplate).toBe(true),
   statblockPath: (t) => {
     expect(tokenOf(t.full, 'imp').name).toBe('Unknown Creature');
     for (const token of Object.values(t.full.input.objects.tokens)) expect(token).not.toHaveProperty('statblockPath');

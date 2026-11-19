@@ -37,7 +37,7 @@ function context(overrides: Partial<ProjectionContext> = {}): ProjectionContext 
 }
 function hero(overrides: Partial<Character> = {}): Character {
   return {
-    id: 'hero', kind: 'character', x: 140, y: 140, imagePath: 'atlas-vtt/assets/hero.png', name: 'Anna',
+    id: 'hero', kind: 'character', showNameplate: true, x: 140, y: 140, imagePath: 'atlas-vtt/assets/hero.png', name: 'Anna',
     resources: { hp: { current: 7, max: 10 }, stress: { current: 2, max: 6 } }, ringColor: '#3366ff', conditions: ['prone'], ...overrides,
   };
 }

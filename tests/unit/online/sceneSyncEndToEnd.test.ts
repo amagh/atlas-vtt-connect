@@ -35,11 +35,11 @@ function tavernObjects(): Objects {
   // The DM-only fields (notes, statblocks, tags, hidden) are not all on the public token type.
   const tokens = {
     hero: {
-      id: 'hero', kind: 'character', x: 140, y: 140, imagePath: 'art/hero.png', name: 'Hero', resources: { hp: { current: 7, max: 10 } },
+      id: 'hero', kind: 'character', showNameplate: true, x: 140, y: 140, imagePath: 'art/hero.png', name: 'Hero', resources: { hp: { current: 7, max: 10 } },
       notePath: 'notes/SECRET-hero.md', statblockPath: 'secret/hero.md', dmNotePath: 'secret/dm.md', tags: ['SECRET'], conditions: ['prone'],
     },
-    orc: { id: 'orc', kind: 'character', x: 400, y: 140, imagePath: 'art/SECRET-orc.png', name: 'SECRET orc', isHidden: true, resources: { hp: { current: 5, max: 5 } } },
-    goblin: { id: 'goblin', kind: 'character', x: 1050, y: 1050, imagePath: 'art/goblin.png', name: 'Goblin', resources: { hp: { current: 3, max: 6 } } },
+    orc: { id: 'orc', kind: 'character', showNameplate: true, x: 400, y: 140, imagePath: 'art/SECRET-orc.png', name: 'SECRET orc', isHidden: true, resources: { hp: { current: 5, max: 5 } } },
+    goblin: { id: 'goblin', kind: 'character', showNameplate: true, x: 1050, y: 1050, imagePath: 'art/goblin.png', name: 'Goblin', resources: { hp: { current: 3, max: 6 } } },
   } as unknown as Objects['tokens'];
   return {
     tokens,

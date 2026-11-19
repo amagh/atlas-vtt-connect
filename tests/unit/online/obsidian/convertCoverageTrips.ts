@@ -18,15 +18,15 @@ const hero: Character = {
   showRing: true, ringColor: '#3366ff', conditions: ['prone', 'frightened'], conditionValues: { frightened: 2 },
   name: 'Anna', resources: { hp: { current: 7, max: 10 }, stress: { current: 2, max: 6 }, mana: { current: 1, max: 2 } }, side: 'players',
   statblockPath: 'Bestiary/Anna.md', statblockName: 'Anna (statblock)', notePath: 'GM/anna.md', tags: ['pc'],
-  overriddenMax: ['hp'], difficulty: '3', playerLinked: true, playerId: 'p1', playerCharacterId: 'c1', showNameplate: false, instanceNumber: 2,
+  overriddenMax: ['hp'], difficulty: '3', playerLinked: true, playerId: 'p1', playerCharacterId: 'c1', showNameplate: true, instanceNumber: 2,
   vision: { enabled: true, range: 200 }, light: { bright: 20, dim: 40, color: '#ffcc88', intensity: 1, animation: 'none' },
 };
-const goblin: Character = { id: 'goblin', kind: 'character', x: 350, y: 70, imagePath: 'art/goblin.png', name: '', statblockPath: 'Bestiary/Goblin.md', statblockName: 'Goblin' };
-const imp: Character = { id: 'imp', kind: 'character', x: 560, y: 70, imagePath: 'art/imp.png', name: '', statblockPath: 'Bestiary/Imp.md' };
+const goblin: Character = { id: 'goblin', kind: 'character', showNameplate: true, x: 350, y: 70, imagePath: 'art/goblin.png', name: '', statblockPath: 'Bestiary/Goblin.md', statblockName: 'Goblin' };
+const imp: Character = { id: 'imp', kind: 'character', showNameplate: true, x: 560, y: 70, imagePath: 'art/imp.png', name: '', statblockPath: 'Bestiary/Imp.md' };
 const crate: Token = { id: 'crate', kind: 'token', x: 420, y: 70, imagePath: 'art/crate.png', showRing: false };
-const fallen: Character = { id: 'fallen', kind: 'character', x: 630, y: 70, imagePath: 'art/fallen.png', name: 'Fallen', resources: { hp: { current: 0, max: 10 } } };
-const ghoul: Character = { id: 'ghoul', kind: 'character', x: 700, y: 70, imagePath: 'art/ghoul.png', name: 'Ghoul', resources: { doom: { current: 0, max: 5 } } };
-const spy: Character = { id: 'spy', kind: 'character', x: 490, y: 70, imagePath: 'art/spy.png', name: 'Spy', isHidden: true };
+const fallen: Character = { id: 'fallen', kind: 'character', showNameplate: true, x: 630, y: 70, imagePath: 'art/fallen.png', name: 'Fallen', resources: { hp: { current: 0, max: 10 } } };
+const ghoul: Character = { id: 'ghoul', kind: 'character', showNameplate: true, x: 700, y: 70, imagePath: 'art/ghoul.png', name: 'Ghoul', resources: { doom: { current: 0, max: 5 } } };
+const spy: Character = { id: 'spy', kind: 'character', showNameplate: true, x: 490, y: 70, imagePath: 'art/spy.png', name: 'Spy', isHidden: true };
 
 export const sign: TextElement = {
   id: 'sign', kind: 'text', x: 50, y: 60, text: 'Tavern', fontSize: 24, fontFamily: 'serif', color: '#112233',

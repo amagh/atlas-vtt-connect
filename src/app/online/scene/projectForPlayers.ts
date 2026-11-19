@@ -21,7 +21,7 @@ import { closedFrame, type LightingFrame } from './lightingFrame';
 import { lightOverlay } from './lightOverlay';
 import { DEFAULT_GRID_SIZE, tokenBounds } from './objectBounds';
 import type { PlayerViewRules } from './playerViewRules';
-import { projectInitiative, projectWidgets, withCombatantSides } from './projectPanels';
+import { nameplateShown, projectInitiative, projectWidgets, withCombatantSides } from './projectPanels';
 import { projectDrawings, projectFog, projectRecord, projectTexts, type ProjectionMemo } from './projectRecords';
 import { isDowned, projectBars, projectWheels } from './projectResources';
 import { COLLECTION_SHOWS, type TokenResourceShows } from './resourceVisibility';
@@ -35,7 +35,7 @@ import { WIDGET_ICON_PATHS } from '../../types/widgetIcons';
 /** The part of a `SceneSnapshot` the projection reads; `mapPath` is the GM's own path and is never sent. */
 export type ProjectionInput = Pick<SceneSnapshot, 'background' | 'grid' | 'objects' | 'widgets' | 'initiative' | 'initiativeTrackerOpen' | 'mapPath' | 'lighting'> & {
   /** The map's token settings where the host reads them (a stock Atlas): instance badges and the ring's size. */
-  tokenSettings?: Partial<Pick<TokenSettings, 'showInstanceBadges' | 'tokenRingSize'>>;
+  tokenSettings?: Partial<Pick<TokenSettings, 'showInstanceBadges' | 'tokenRingSize' | 'showNameplates'>>;
 };
 
 export interface ProjectionContext {
@@ -134,7 +134,8 @@ export function projectForPlayers(state: ProjectionInput, context: ProjectionCon
   const initiativeRules = context.initiativeRules ?? DEFAULT_INITIATIVE_RULES;
   // A token the player window does not show (unseen, or only sensed) is not sent, with its nameplate and bars; nor is
   // one kept beside the map (Atlas 0.9's `offMap`), which is no part of the map.
-  const seen = projectRecord(onMapTokens(objects?.tokens), (token, id) => (lighting && !lighting.seen(id) ? null : projectToken(token, id, context, cellSize)));
+  const mapNameplates = state.tokenSettings?.showNameplates === true;
+  const seen = projectRecord(onMapTokens(objects?.tokens), (token, id) => (lighting && !lighting.seen(id) ? null : projectToken(token, id, context, cellSize, mapNameplates)));
   const initiative = projectInitiative(state, listedTokenIds(seen, objects?.tokens, closed), context.rules, context.resources ?? NO_RESOURCES, initiativeRules, context.resourceShows ?? COLLECTION_SHOWS);
   const tokens = withTokenLooks(withCombatantSides(seen, initiative, objects?.tokens), state);
   const fog = projectFog(objects?.fog, memo);
@@ -417,7 +418,7 @@ export function snapGridOfState(grid: GridState | null): PlayerSnapGrid | null {
   return { type: grid.type ?? 'square', size: grid.size, offsetX: grid.offsetX ?? 0, offsetY: grid.offsetY ?? 0 };
 }
 
-function projectToken(token: TokenEntity, id: string, context: ProjectionContext, cellSize: number): PlayerToken | null {
+function projectToken(token: TokenEntity, id: string, context: ProjectionContext, cellSize: number, mapNameplates: boolean): PlayerToken | null {
   // The cell players draw a token's size with: the wire's grid size and map cell size, both clamped to this range.
   const wireCell = positiveOr(cellSize, DEFAULT_GRID_SIZE, SCENE_RANGES.cellSize);
   // Any truthy value hides, as in the local window (`playerSafeFrame`, `PlayerInitiativePanel`).
@@ -446,7 +447,8 @@ function projectToken(token: TokenEntity, id: string, context: ProjectionContext
     image: context.assets.idFor(token.imagePath),
     ring: token.showRing === false ? null : textOr(token.ringColor, DEFAULT_RING),
     conditions: character ? projectConditions(token, context.conditions ?? []) : [],
-    name: character && rules.showTokenNameplates ? displayName(character) : null,
+    // Only a nameplate players see (`nameplateShown`): the map's or the token's own Show nameplate.
+    name: character && nameplateShown(character, mapNameplates, rules) ? displayName(character) : null,
     // Atlas 0.5 replaced HP and stress with the collection's resources; the old fields stay null for older players.
     hp: null,
     stress: null,
