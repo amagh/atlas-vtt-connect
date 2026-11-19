@@ -323,6 +323,12 @@ function isPlayerGlow(value: unknown): boolean {
   return isFields(value) && typeof value.image === 'string' && value.image.length <= SCENE_LIMITS.glowImage && PNG_DATA_URL.test(value.image);
 }
 
+function isPlayerDoors(value: unknown): boolean {
+  return Array.isArray(value) && value.length <= SCENE_LIMITS.doors && value.every((door) => isFields(door)
+    && isCoordinate(door.x1) && isCoordinate(door.y1) && isCoordinate(door.x2) && isCoordinate(door.y2) && typeof door.open === 'boolean'
+    && (door.secret === undefined || door.secret === true));
+}
+
 const FIELD_CHECKS: Record<SceneFieldKey, Check> = {
   map: isPlayerMap,
   grid: nullable(isPlayerGrid),
@@ -332,6 +338,7 @@ const FIELD_CHECKS: Record<SceneFieldKey, Check> = {
   pins: isPlayerPins,
   handout: nullable(isPlayerHandout),
   glow: nullable(isPlayerGlow),
+  doors: isPlayerDoors,
 };
 /** A measure's `tabletop` field: one `readExtra` reads, of a bounded size, its rules and words well formed. */
 function isMeasureExtra(value: unknown): boolean {
@@ -366,7 +373,7 @@ const RECORD_CHECKS: Record<SceneRecordKey, Check> = {
 export function isPlayerSceneBody(value: unknown): boolean {
   return isFields(value) && isSceneId(value.sceneId)
     // An older GM sends no measurement; the mirror fills it in.
-    && SCENE_FIELD_KEYS.every((key) => (Object.hasOwn(value, key) ? FIELD_CHECKS[key](value[key]) : key === 'measurement' || key === 'pins' || key === 'handout' || key === 'glow'))
+    && SCENE_FIELD_KEYS.every((key) => (Object.hasOwn(value, key) ? FIELD_CHECKS[key](value[key]) : key === 'measurement' || key === 'pins' || key === 'handout' || key === 'glow' || key === 'doors'))
     && isRecordOf(value.tokens, isPlayerToken) && isRecordOf(value.texts, isPlayerText)
     // Absent from a body made before measures were sent: the mirror then has none.
     && optional((measures: unknown) => isRecordOf(measures, isPlayerMeasure))(value.measures);

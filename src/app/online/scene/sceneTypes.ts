@@ -418,6 +418,22 @@ export interface PlayerScene {
   handout?: PlayerHandout | null;
   /** How the lit scene's light falls where players see it, or null where none does; absent from an older GM and on an unlit scene. */
   glow?: PlayerGlow | null;
+  /** The doors players see, sorted by where they stand; absent from an older GM and on a scene without walls. */
+  doors?: PlayerDoor[];
+}
+
+/**
+ * A door players see: the opening it closes, from (x1, y1) to (x2, y2), and whether it stands open. Only where players
+ * see its middle; a closed secret door is never one (it is wall like any other), and nothing else of the walls is sent.
+ */
+export interface PlayerDoor {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  open: boolean;
+  /** A secret door, sent only while open: drawn, but with no badge and not to be asked for, as on Atlas's player window. */
+  secret?: true;
 }
 
 /**
@@ -485,7 +501,7 @@ export type PlayerSceneBody = Omit<PlayerScene, 'fog' | 'drawings'>;
 export const SCENE_RECORD_KEYS = ['tokens', 'fog', 'texts', 'drawings', 'measures'] as const;
 export type SceneRecordKey = typeof SCENE_RECORD_KEYS[number];
 /** Fields replaced as a whole when they differ. */
-export const SCENE_FIELD_KEYS = ['map', 'grid', 'widgets', 'initiative', 'measurement', 'pins', 'handout', 'glow'] as const;
+export const SCENE_FIELD_KEYS = ['map', 'grid', 'widgets', 'initiative', 'measurement', 'pins', 'handout', 'glow', 'doors'] as const;
 export type SceneFieldKey = typeof SCENE_FIELD_KEYS[number];
 
 export interface ScenePatchBody {

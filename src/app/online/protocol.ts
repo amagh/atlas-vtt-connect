@@ -128,6 +128,8 @@ export type ControlMessage =
   | { v: 1; type: 'token-sheets'; entries: TokenSheet[] }
   /** Player to GM: a roll from their own sheet, by where it is on it; the GM finds the formula on its own copy. */
   | { v: 1; type: 'sheet-roll'; tokenId: string; roll: SheetRollRef }
+  /** Player to GM: asks to open or close one of the doors of `sceneId` they were sent, by its opening. The GM allows or denies it. */
+  | { v: 1; type: 'door-request'; sceneId: string; x1: number; y1: number; x2: number; y2: number }
   /** A ping at a world point of `sceneId`. Players send it without `from`; the GM relays it with `from` and the colour. */
   | { v: 1; type: 'map-ping'; sceneId: string; x: number; y: number; from?: string; color?: string }
   /**
@@ -187,7 +189,7 @@ type Vec3 = { x: number; y: number; z: number };
 
 /** What an admitted player may send besides `ping`, `pong` and `bye`; the GM drops every other type from a player. */
 export const PLAYER_MESSAGE_TYPES: ReadonlySet<ControlMessage['type']> = new Set<ControlMessage['type']>([
-  'scene-resync', 'token-move', 'dice-roll', 'dice-result', 'laser', 'sheet-roll', 'map-ping', 'map-template', 'note-request', 'board-request', 'ar-view', 'ar-survey', 'map-spell', 'player-color', 'cutscene-ready',
+  'scene-resync', 'token-move', 'dice-roll', 'dice-result', 'laser', 'sheet-roll', 'map-ping', 'map-template', 'note-request', 'board-request', 'ar-view', 'ar-survey', 'map-spell', 'player-color', 'cutscene-ready', 'door-request',
 ]);
 
 export type Decoded =
@@ -241,6 +243,7 @@ const VALIDATORS: Record<ControlMessage['type'], (m: Fields) => boolean> = {
     && m.tokenIds.every((id) => isSceneId(id)),
   // Any number: one JSON reads as Infinity (`1e400`) is the GM's check to refuse, not a broken message.
   'token-move': (m) => isSceneId(m.sceneId) && isSceneId(m.tokenId) && typeof m.x === 'number' && typeof m.y === 'number',
+  'door-request': (m) => isSceneId(m.sceneId) && [m.x1, m.y1, m.x2, m.y2].every((n) => typeof n === 'number' && Number.isFinite(n)),
   'token-move-refused': (m) => isSceneId(m.tokenId) && (m.reason === undefined || m.reason === 'not-held'),
   'dice-roll': (m) => isDiceSelection(m.dice) && isDiceModifier(m.modifier) && (m.advantage === undefined || (ADVANTAGE_SIDES as readonly unknown[]).includes(m.advantage)),
   'dice-result': (m) => isPhysicalRoll(m),

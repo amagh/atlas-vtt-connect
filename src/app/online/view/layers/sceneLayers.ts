@@ -3,6 +3,8 @@
  * to Atlas's list fails the build here until the player view has one.
  */
 import type { SceneLayer } from '@atlas-vtt/shared/draw';
+import { createDoorBadgesLayer } from './doorBadgesLayer';
+import { createDoorsLayer } from './doorsLayer';
 import { createDrawingsLayer } from './drawingsLayer';
 import { FogLayer } from './fogLayer';
 import { createGlowLayer } from './glowLayer';
@@ -13,7 +15,7 @@ import { createMapLayer } from './mapLayer';
 import { createTextsLayer } from './textsLayer';
 import { createTokensLayer } from './tokensLayer';
 
-/** Draws `layers` in order as one layer: the scene's light goes on the map's own layer, under the grid. */
+/** Draws `layers` in order as one layer: the scene's light on the map's own layer, the doors and their badges on the fog's. */
 function stacked(...layers: PlayerLayer[]): PlayerLayer {
   return {
     draw: (surface, frame) => { for (const layer of layers) layer.draw(surface, frame); },
@@ -30,6 +32,7 @@ export function createSceneLayers(options: { minis?: MiniLayer } = {}): Record<S
     tokens: createTokensLayer(options.minis ? { minis: options.minis } : {}),
     texts: createTextsLayer(),
     drawings: createDrawingsLayer(),
-    fog: new FogLayer(),
+    // The doors and Atlas's badges over the fog and the darkness, so players find them; only seen doors are ever sent.
+    fog: stacked(new FogLayer(), createDoorsLayer(), createDoorBadgesLayer()),
   };
 }

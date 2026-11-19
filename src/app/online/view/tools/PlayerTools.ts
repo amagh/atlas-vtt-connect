@@ -14,7 +14,8 @@
 import { laserPointSpacing } from '@atlas-vtt/shared/draw';
 import { RemoteLasers, type RemoteLaserFrame } from '@atlas-vtt/shared/draw';
 import { DEFAULT_LASER_POINTER_SETTINGS, LASER_SIZE_MAX, LASER_SIZE_MIN } from '../../../../../packages/atlas-shared/src/index';
-import type { PlayerScene, ScenePoint } from '../../scene/sceneTypes';
+import { doorInReach, doorMiddle } from '../../scene/doorReach';
+import type { PlayerDoor, PlayerScene, ScenePoint } from '../../scene/sceneTypes';
 import { laserColor, swatchLaserColor } from '../../tools/laserColors';
 import type { PlayerLaser } from '../../tools/toolMessages';
 import { PingModel, type PingRing, type PlayerPing } from '../../tools/pings';
@@ -65,6 +66,8 @@ export interface PlayerToolsOptions {
   sendLaser(points: ScenePoint[], lifted: boolean, dt: number[], color?: string, size?: number): boolean;
   /** Sends a ping at a world point; false when it could not go. Without it the Ping tool does nothing. */
   sendPing?(x: number, y: number): boolean;
+  /** Asks the GM to open or close a door; false when it could not go. Without it a tap on a door does nothing. */
+  sendDoorRequest?(door: PlayerDoor): boolean;
   /** Asks the GM to add a template or remove one of the player's own; false when it could not go. */
   sendTemplate?(change: TemplateChange): boolean;
   /** The colour remembered from an earlier visit, if any. */
@@ -79,6 +82,10 @@ export interface PlayerToolsOptions {
 function clampSize(size: number): number {
   return Math.round(Math.min(LASER_SIZE_MAX, Math.max(LASER_SIZE_MIN, size)));
 }
+
+/** A door badge's radius, as a share of a grid cell (`doorBadgesLayer`), and the least a press may miss its middle by, in screen pixels. */
+const DOOR_BADGE_RADIUS = 0.2;
+const DOOR_PRESS_PIXELS = 10;
 
 /** This player's own laser, among the others'. */
 const SELF = 'self';
@@ -109,6 +116,8 @@ export class PlayerTools implements TokenGrab {
   private draft: { start: ScenePoint; end: ScenePoint } | null = null;
   /** The tool whose press is in progress: it gets the moves and the release. */
   private pressed: PlayerTool | null = null;
+  /** The door a Move press came down on: a tap on it asks the GM to turn it. */
+  private doorPress: PlayerDoor | null = null;
   private connected = false;
 
   constructor(private readonly options: PlayerToolsOptions) {
@@ -280,7 +289,13 @@ export class PlayerTools implements TokenGrab {
     // Measure and laser need the session: tokens check their own connection.
     if (this.current !== 'move' && !this.connected) return false;
     if (this.current === 'move') {
-      if (!this.options.moves.grab(point)) return false;
+      if (!this.options.moves.grab(point)) {
+        // Off the player's own tokens, a press on a door's badge is taken: released without moving, it asks the GM to turn it.
+        const door = this.connected ? this.doorAt(point) : null;
+        if (!door) return false;
+        this.doorPress = door;
+        return true;
+      }
       const dragged = this.options.moves.dragged();
       if (dragged) this.ruler.begin(dragged.origin, grid, kind, this.tokenSize(dragged.tokenId), this.tokenSpeed(dragged.tokenId));
     } else if (this.current === 'measure') {
@@ -333,6 +348,14 @@ export class PlayerTools implements TokenGrab {
 
   /** Released without moving: with Template, a tap on the player's own template removes it; anything else ends. */
   tap(point: ScreenPoint): void {
+    const door = this.doorPress;
+    if (door) {
+      this.doorPress = null;
+      // A ring at the door, here only: the request went to the GM, who decides.
+      if (this.options.sendDoorRequest?.(door)) this.pings.add({ x: (door.x1 + door.x2) / 2, y: (door.y1 + door.y2) / 2 }, this.selfColor(), this.options.now());
+      this.options.onChange();
+      return;
+    }
     if (this.pressed === 'template') {
       this.pressed = null;
       this.placeTemplate(this.options.toWorld(point));
@@ -369,6 +392,33 @@ export class PlayerTools implements TokenGrab {
     this.laser.dispose();
     this.lasers.clear();
     this.pings.clear();
+  }
+
+  /**
+   * The door whose badge is under `point` (its disc, at least `DOOR_PRESS_PIXELS` across on screen), or null. Only a
+   * badged door counts: within reach of one of the player's tokens, and never a secret one; the door itself takes nothing.
+   */
+  private doorAt(point: ScreenPoint): PlayerDoor | null {
+    const scene = this.scene;
+    const doors = scene?.doors;
+    if (!scene || !doors || doors.length === 0 || !this.options.sendDoorRequest) return null;
+    const { cellSize } = scene.map;
+    const { controlled } = this.options.moves.overlay();
+    const mine = [...controlled].flatMap((id) => (Object.hasOwn(scene.tokens, id) && scene.tokens[id] ? [scene.tokens[id]] : []));
+    if (mine.length === 0) return null;
+    const at = this.options.toWorld(point);
+    let best: PlayerDoor | null = null;
+    let reach = Math.max(cellSize * DOOR_BADGE_RADIUS, DOOR_PRESS_PIXELS / Math.max(this.options.zoom(), 1e-6));
+    for (const door of doors) {
+      if (door.secret || !doorInReach(door, mine, cellSize)) continue;
+      const middle = doorMiddle(door);
+      const distance = Math.hypot(at.x - middle.x, at.y - middle.y);
+      if (distance <= reach) {
+        best = door;
+        reach = distance;
+      }
+    }
+    return best;
   }
 
   /** A token's size in cells, as the scene sends it; 1 for one it does not hold. */
@@ -415,6 +465,7 @@ export class PlayerTools implements TokenGrab {
 
   /** Released: the measurement stays a moment, the ruler goes, the laser is let go. */
   private finishGesture(): void {
+    this.doorPress = null;
     this.draft = null;
     if (this.pressed === 'measure') this.measure.release(this.options.now());
     else this.measure.clear();
@@ -427,6 +478,7 @@ export class PlayerTools implements TokenGrab {
   /** Interrupted: as released, and a dragged token goes back instead of dropping. */
   private endGesture(): void {
     if (this.pressed === 'move') this.options.moves.cancel();
+    this.doorPress = null;
     this.draft = null;
     this.measure.clear();
     this.ruler.end();

@@ -83,6 +83,7 @@ const mapOptions = (): MapViewOptions => ({
     sendMove: (tokenId, x, y) => session?.sendTokenMove(tokenId, x, y) ?? false,
     sendLaser: (points, lifted, dt, color, size) => session?.sendLaser(points, lifted, dt, color, size) ?? false,
     sendPing: (x, y) => session?.sendPing(x, y) ?? false,
+    sendDoorRequest: (door) => session?.sendDoorRequest(door) ?? false,
     sendTemplate: (change) => session?.sendTemplate(change) ?? false,
     laserColor: loadLaserColor(() => localStorage),
     onLaserColor: (color) => saveLaserColor(color, () => localStorage),

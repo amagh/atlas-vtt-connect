@@ -143,6 +143,7 @@ export class OnlineSessionService {
         ...(deps.sheets ? { sheets: deps.sheets } : {}),
         ...(deps.pings ? { pings: deps.pings } : {}),
         ...(deps.templates ? { templates: deps.templates } : {}),
+        ...(deps.doors ? { doors: deps.doors } : {}),
         // The vault's notes: a readable pin's note goes to the player who opens it.
         notes: deps.notes ?? (({ session, projection }) => new NoteHost({ session, projection, read: (notePath, mapPath) => readPinNote(this.app, notePath, mapPath) })),
         ...(deps.laser ? { laser: deps.laser } : {}),

@@ -115,8 +115,8 @@ describe('online protocol', () => {
     });
   });
 
-  it('names what players may send: a resync, a token move, a dice roll, a laser, a roll from their sheet, a ping, a template, a pin they open, the 3D board and their phone in AR and its survey of the table', () => {
-    expect([...PLAYER_MESSAGE_TYPES].sort()).toEqual(['ar-survey', 'ar-view', 'board-request', 'cutscene-ready', 'dice-result', 'dice-roll', 'laser', 'map-ping', 'map-spell', 'map-template', 'note-request', 'player-color', 'scene-resync', 'sheet-roll', 'token-move']);
+  it('names what players may send: a resync, a token move, a dice roll, a laser, a roll from their sheet, a ping, a template, a pin they open, a door request, the 3D board and their phone in AR and its survey of the table', () => {
+    expect([...PLAYER_MESSAGE_TYPES].sort()).toEqual(['ar-survey', 'ar-view', 'board-request', 'cutscene-ready', 'dice-result', 'dice-roll', 'door-request', 'laser', 'map-ping', 'map-spell', 'map-template', 'note-request', 'player-color', 'scene-resync', 'sheet-roll', 'token-move']);
   });
 
   describe('dice-result and the dice offer', () => {
