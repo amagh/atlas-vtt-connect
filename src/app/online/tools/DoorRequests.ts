@@ -1,6 +1,7 @@
 /**
  * Players asking to open or close a door (`door-request`), which the GM allows or denies. A request is taken only for a
- * door the sender was sent (`PlayerScene.doors`, so one they see) on the scene they have, at most
+ * door the sender was sent (`PlayerScene.doors`, so one they see) on the scene they have, within reach of one of the
+ * tokens they control (`doorReach`), at most
  * `DOOR_REQUESTS_PER_SECOND` a second, and one waiting answer per door at a time. The GM gets a notice; on Allow the
  * door is found again in the scene the GM's view shows now and turned through Atlas's own store (a locked door is
  * unlocked first: the GM allowed it). Nothing changes without the GM's Allow. Secret doors, which have no badge on
@@ -10,6 +11,7 @@ import type { SessionHandler, SessionPlayer } from '../GmSession';
 import type { ControlMessage } from '../protocol';
 import { RateLimit } from '../rateLimit';
 import type { SceneSession } from '../scene/sceneSources';
+import { doorInReach } from '../scene/doorReach';
 import type { PlayerDoor } from '../scene/sceneTypes';
 import type { SlotProjection } from '../scene/slotViews';
 
@@ -36,6 +38,8 @@ export interface DoorRequestsOptions {
   doors: DoorToggle | null;
   /** Shows the GM the question; `answer` runs once with their choice. Returns what hides it unanswered. */
   ask(question: DoorAsk, answer: (allow: boolean) => void): { hide(): void };
+  /** The tokens each player controls; without it nobody does, and no request is taken. */
+  tokensOf?(playerId: string): readonly string[];
   /** While a cutscene runs, no request is taken. */
   cutscene?: { running(): boolean };
 }
@@ -81,6 +85,9 @@ export class DoorRequests implements SessionHandler {
     const door = (scene.doors ?? []).find((each) => sameOpening(each, message));
     // A secret door has no badge to ask with, as on Atlas's player window.
     if (!door || door.secret) return;
+    // Only within reach of one of the sender's tokens, where they stand in what the player was sent.
+    const mine = (this.options.tokensOf?.(player.playerId) ?? []).flatMap((id) => (Object.hasOwn(scene.tokens, id) && scene.tokens[id] ? [scene.tokens[id]] : []));
+    if (!doorInReach(door, mine, scene.map.cellSize)) return;
     const key = keyOf(scene.sceneId, door);
     if (this.waiting.has(key)) return;
     // Players are never told a door is locked (Atlas shows them no lock); the GM is.

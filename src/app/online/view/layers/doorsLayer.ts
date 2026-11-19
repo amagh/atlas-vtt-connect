@@ -1,5 +1,5 @@
 /**
- * The doors players see (`PlayerScene.doors`), over the grid and under the tokens: a closed door as a wooden bar across
+ * The doors players see (`PlayerScene.doors`), over the fog and the darkness so they stand out: a closed door as a wooden bar across
  * its opening, an open one as its leaf swung a quarter turn from its first end, with the opening marked faintly. Its
  * badge, which players tap to ask the GM to turn it, is drawn over the fog (`doorBadgesLayer`).
  */

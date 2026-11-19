@@ -12,7 +12,7 @@ import { BADGE_COLOR, createDoorBadgesLayer } from '../../../src/app/online/view
 import { createDoorsLayer, DOOR_WOOD } from '../../../src/app/online/view/layers/doorsLayer';
 import { project, projectLit, ready, scene } from './lightingFixtures';
 import { frame, RecordingSurface } from './recordingSurface';
-import { playerScene, sceneBody } from './sceneFixtures';
+import { playerScene, playerToken, sceneBody } from './sceneFixtures';
 
 const decodeRaw = (value: unknown): ReturnType<typeof decodeControl> => decodeControl(JSON.stringify(value));
 const wall = (id: string, type: string, x: number, closed = true) => ({ id, type, p1: { x, y: 300 }, p2: { x, y: 370 }, closed, blocks: 'sight', limited: false });
@@ -66,13 +66,22 @@ describe('the doors layer', () => {
     expect(strokes.at(-1)?.paths).toEqual([[{ x: 300, y: 100 }, { x: 300, y: 170 }]]);
   });
 
-  it('badges each door players may ask for with Atlas\'s glyph, a secret door with none', () => {
-    const surface = new RecordingSurface();
-    createDoorBadgesLayer().draw(surface, frame(playerScene({ doors: [
-      { x1: 100, y1: 100, x2: 170, y2: 100, open: false }, { x1: 300, y1: 100, x2: 370, y2: 100, open: true }, { x1: 500, y1: 100, x2: 570, y2: 100, open: true, secret: true },
-    ] })));
-    const glyphs = surface.calls.filter((call) => call.op === 'glyph') as Array<{ name: string; x: number; color: string }>;
-    expect(glyphs.map(({ name, x, color }) => [name, x, color])).toEqual([['door-closed', 135, BADGE_COLOR], ['door-open', 335, BADGE_COLOR]]);
+  it('badges with Atlas\'s glyph each door within two squares of the player\'s own tokens, a secret door with none', () => {
+    const scene = playerScene({
+      tokens: { t1: playerToken({ x: 235 }), t2: playerToken({ x: 900 }) },
+      doors: [
+        { x1: 100, y1: 100, x2: 170, y2: 100, open: false }, { x1: 300, y1: 100, x2: 370, y2: 100, open: true },
+        { x1: 200, y1: 150, x2: 270, y2: 150, open: true, secret: true }, { x1: 700, y1: 100, x2: 770, y2: 100, open: false },
+      ],
+    });
+    const glyphsOf = (controlled: string[]) => {
+      const surface = new RecordingSurface();
+      createDoorBadgesLayer().draw(surface, frame(scene, { overlay: { controlled: new Set(controlled), positions: new Map() } }));
+      return (surface.calls.filter((call) => call.op === 'glyph') as Array<{ name: string; x: number; color: string }>).map(({ name, x, color }) => [name, x, color]);
+    };
+    expect(glyphsOf(['t1'])).toEqual([['door-closed', 135, BADGE_COLOR], ['door-open', 335, BADGE_COLOR]]);
+    // Another player's token near the far door badges nothing for this one.
+    expect(glyphsOf([])).toEqual([]);
   });
 
   it('draws nothing without doors', () => {
@@ -86,16 +95,17 @@ const ANA: SessionPlayer = { playerId: 'p1', name: 'Ana', status: 'admitted' };
 const OPENING = { x1: 200, y1: 300, x2: 200, y2: 370 };
 
 /** A door request handler whose player has a scene with one closed door at `OPENING` (locked or not). */
-function requests(options: { locked?: boolean; held?: boolean } = {}) {
+function requests(options: { locked?: boolean; held?: boolean; far?: boolean } = {}) {
   let handler: SessionHandler | null = null;
   const asks: Array<{ question: DoorAsk; answer: (allow: boolean) => void; hidden: boolean }> = [];
   const toggle = vi.fn(() => true);
-  const sent = playerScene({ doors: [{ ...OPENING, open: false }] });
+  const sent = playerScene({ doors: [{ ...OPENING, open: false }], tokens: { t1: playerToken({ x: options.far ? 600 : 300, y: 335 }) } });
   const shown = { objects: { walls: { w1: { id: 'w1', type: 'door', closed: true, ...(options.locked ? { locked: true } : {}), p1: { x: 200, y: 300 }, p2: { x: 200, y: 370 } }, w2: { id: 'w2', type: 'solid', p1: { x: 0, y: 0 }, p2: { x: 0, y: 70 } } } } };
   const doors = new DoorRequests({
     session: { use: (h: SessionHandler) => { handler = h; return () => undefined; } } as never,
     projection: { slotOf: () => ({ sceneId: sent.sceneId, lastSent: sent, tab: { viewId: 'v1' } }), shownSnapshot: () => (options.held === false ? null : shown) } as never,
     doors: { toggle },
+    tokensOf: (playerId) => (playerId === 'p1' ? ['t1'] : []),
     ask: (question, answer) => {
       const asked = { question, answer, hidden: false };
       asks.push(asked);
@@ -137,6 +147,12 @@ describe('door requests', () => {
     vi.useRealTimers();
   });
 
+  it('are dropped for a door over two squares from every token the player controls', () => {
+    const { asks, request } = requests({ far: true });
+    request();
+    expect(asks).toEqual([]);
+  });
+
   it('tell the GM a door is locked, and turn nothing once the GM\'s Atlas is on another map', () => {
     const locked = requests({ locked: true });
     locked.request();
@@ -165,7 +181,7 @@ describe('door requests', () => {
 });
 
 describe('a tap on a door', () => {
-  it('asks the GM to turn it with the Move tool, off the player\'s own tokens; a drag asks nothing', () => {
+  it('asks the GM only on its badge, near the player\'s own token; the door itself and a drag ask nothing', () => {
     const identity = (point: { x: number; y: number }) => ({ x: point.x, y: point.y });
     const moves = new TokenMoves({ toWorld: identity, send: () => true, onChange: () => undefined });
     const asked: PlayerDoor[] = [];
@@ -174,19 +190,27 @@ describe('a tap on a door', () => {
       sendDoorRequest: (door) => { asked.push(door); return true; },
     });
     const door: PlayerDoor = { x1: 500, y1: 100, x2: 500, y2: 170, open: false };
-    const scene = playerScene({ doors: [door], tokens: {} });
-    moves.setScene(scene);
+    const show = (x: number) => {
+      const scene = playerScene({ doors: [door], tokens: { t1: playerToken({ x, y: 135 }) } });
+      moves.setScene(scene);
+      tools.setScene(scene);
+    };
+    show(400);
+    moves.setControlled(['t1']);
     moves.setConnected(true);
-    tools.setScene(scene);
     tools.setConnected(true);
-    expect(tools.grab({ x: 300, y: 100 }, 'mouse')).toBe(false);
-    expect(tools.grab({ x: 505, y: 140 }, 'mouse')).toBe(true);
-    tools.tap({ x: 505, y: 140 });
+    // On the door, off its badge.
+    expect(tools.grab({ x: 500, y: 104 }, 'mouse')).toBe(false);
+    expect(tools.grab({ x: 505, y: 138 }, 'mouse')).toBe(true);
+    tools.tap({ x: 505, y: 138 });
     expect(asked).toEqual([door]);
-    tools.grab({ x: 505, y: 140 }, 'mouse');
+    tools.grab({ x: 505, y: 138 }, 'mouse');
     tools.drop({ x: 505, y: 300 });
-    tools.tap({ x: 505, y: 140 });
+    tools.tap({ x: 505, y: 138 });
     expect(asked).toHaveLength(1);
+    // Over two squares away, the door has no badge to tap.
+    show(200);
+    expect(tools.grab({ x: 505, y: 138 }, 'mouse')).toBe(false);
   });
 });
 

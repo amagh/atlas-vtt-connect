@@ -15,7 +15,7 @@ import { createMapLayer } from './mapLayer';
 import { createTextsLayer } from './textsLayer';
 import { createTokensLayer } from './tokensLayer';
 
-/** Draws `layers` in order as one layer: the scene's light on the map's own layer, the doors on the grid's, their badges on the fog's. */
+/** Draws `layers` in order as one layer: the scene's light on the map's own layer, the doors and their badges on the fog's. */
 function stacked(...layers: PlayerLayer[]): PlayerLayer {
   return {
     draw: (surface, frame) => { for (const layer of layers) layer.draw(surface, frame); },
@@ -28,12 +28,11 @@ function stacked(...layers: PlayerLayer[]): PlayerLayer {
 export function createSceneLayers(options: { minis?: MiniLayer } = {}): Record<SceneLayer, PlayerLayer> {
   return {
     map: stacked(createMapLayer(), createGlowLayer()),
-    // Doors on the grid's own layer: over the floor, under the tokens.
-    grid: stacked(createGridLayer(), createDoorsLayer()),
+    grid: createGridLayer(),
     tokens: createTokensLayer(options.minis ? { minis: options.minis } : {}),
     texts: createTextsLayer(),
     drawings: createDrawingsLayer(),
-    // Atlas's door badges over the fog and the darkness: what players tap to ask for a door.
-    fog: stacked(new FogLayer(), createDoorBadgesLayer()),
+    // The doors and Atlas's badges over the fog and the darkness, so players find them; only seen doors are ever sent.
+    fog: stacked(new FogLayer(), createDoorsLayer(), createDoorBadgesLayer()),
   };
 }

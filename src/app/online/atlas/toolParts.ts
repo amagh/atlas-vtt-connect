@@ -116,7 +116,10 @@ export function pingRelayPart(lasers: LasersApi | null): NonNullable<OptionalPar
 
 /** Players' door requests, which the GM allows in a notice; `doors` null where this Atlas cannot turn one (none is taken). */
 export function doorRequestsPart(doors: DoorToggle | null): NonNullable<OptionalParts['doors']> {
-  return ({ session, projection, cutscene }) => new DoorRequests({ session, projection, doors, ask: showDoorRequestNotice, ...(cutscene ? { cutscene } : {}) });
+  return ({ session, projection, cutscene, control }) => new DoorRequests({
+    session, projection, doors, ask: showDoorRequestNotice, ...(cutscene ? { cutscene } : {}),
+    ...(control ? { tokensOf: (playerId: string) => control.tokensOf(playerId) } : {}),
+  });
 }
 
 /**

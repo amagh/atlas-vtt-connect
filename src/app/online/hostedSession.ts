@@ -94,8 +94,8 @@ export interface OptionalParts {
   pings?: (context: HostedContext) => HostedPart;
   /** Players' templates and spells, kept in Atlas's own measures. */
   templates?: (context: HostedContext) => HostedPart & { clear(): void; hasAny(): boolean };
-  /** Players' requests to open or close doors, which the GM allows. Without it none is taken. */
-  doors?: (context: HostedContext) => HostedPart;
+  /** Players' requests to open or close doors near their tokens, which the GM allows. Without it, or token control, none is taken. */
+  doors?: (context: HostedContext & { control?: TokenControl }) => HostedPart;
   /** The notes of readable pins, sent to a player who opens one. Without it opening a pin shows nothing. */
   notes?: (context: HostedContext) => HostedPart;
 }
@@ -244,7 +244,7 @@ export async function hostSession(env: HostEnvironment, sharing: HostedSharingHo
   const laser = env.laser?.(context) ?? null;
   const pings = env.pings?.(context) ?? null;
   const templates = env.templates?.(context) ?? null;
-  const doors = env.doors?.(context) ?? null;
+  const doors = env.doors?.({ ...context, ...(tokenControl ? { control: tokenControl.control } : {}) }) ?? null;
   // Players in augmented reality, as eyes on Tabletop's board: only where there is one.
   const arViews = boardHub ? new ArViewRelay({ session: scenes, projection: hub, board: boardHub, colorOf: (playerId) => colors.colorOf(playerId) }) : null;
   boardHub?.useTemplates(templates instanceof MeasureHost ? templates : null);

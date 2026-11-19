@@ -14,6 +14,7 @@
 import { laserPointSpacing } from '@atlas-vtt/shared/draw';
 import { RemoteLasers, type RemoteLaserFrame } from '@atlas-vtt/shared/draw';
 import { DEFAULT_LASER_POINTER_SETTINGS, LASER_SIZE_MAX, LASER_SIZE_MIN } from '../../../../../packages/atlas-shared/src/index';
+import { doorInReach, doorMiddle } from '../../scene/doorReach';
 import type { PlayerDoor, PlayerScene, ScenePoint } from '../../scene/sceneTypes';
 import { laserColor, swatchLaserColor } from '../../tools/laserColors';
 import type { PlayerLaser } from '../../tools/toolMessages';
@@ -82,17 +83,9 @@ function clampSize(size: number): number {
   return Math.round(Math.min(LASER_SIZE_MAX, Math.max(LASER_SIZE_MIN, size)));
 }
 
-/** How near a press must come to a door, in screen pixels at least, to take it. */
+/** A door badge's radius, as a share of a grid cell (`doorBadgesLayer`), and the least a press may miss its middle by, in screen pixels. */
+const DOOR_BADGE_RADIUS = 0.2;
 const DOOR_PRESS_PIXELS = 10;
-
-/** How far `point` lies from the door's opening. */
-function segmentDistance(point: ScenePoint, { x1, y1, x2, y2 }: PlayerDoor): number {
-  const dx = x2 - x1;
-  const dy = y2 - y1;
-  const length = dx * dx + dy * dy;
-  const t = length > 0 ? Math.min(1, Math.max(0, ((point.x - x1) * dx + (point.y - y1) * dy) / length)) : 0;
-  return Math.hypot(point.x - (x1 + t * dx), point.y - (y1 + t * dy));
-}
 
 /** This player's own laser, among the others'. */
 const SELF = 'self';
@@ -297,7 +290,7 @@ export class PlayerTools implements TokenGrab {
     if (this.current !== 'move' && !this.connected) return false;
     if (this.current === 'move') {
       if (!this.options.moves.grab(point)) {
-        // Off the player's own tokens, a press on a door is taken: released without moving, it asks the GM to turn it.
+        // Off the player's own tokens, a press on a door's badge is taken: released without moving, it asks the GM to turn it.
         const door = this.connected ? this.doorAt(point) : null;
         if (!door) return false;
         this.doorPress = door;
@@ -401,17 +394,25 @@ export class PlayerTools implements TokenGrab {
     this.pings.clear();
   }
 
-  /** The door nearest `point` within a press's reach of it (a fifth of a cell, or 10 screen pixels), or null. */
+  /**
+   * The door whose badge is under `point` (its disc, at least `DOOR_PRESS_PIXELS` across on screen), or null. Only a
+   * badged door counts: within reach of one of the player's tokens, and never a secret one; the door itself takes nothing.
+   */
   private doorAt(point: ScreenPoint): PlayerDoor | null {
-    const doors = this.scene?.doors;
-    if (!doors || doors.length === 0 || !this.options.sendDoorRequest) return null;
+    const scene = this.scene;
+    const doors = scene?.doors;
+    if (!scene || !doors || doors.length === 0 || !this.options.sendDoorRequest) return null;
+    const { cellSize } = scene.map;
+    const { controlled } = this.options.moves.overlay();
+    const mine = [...controlled].flatMap((id) => (Object.hasOwn(scene.tokens, id) && scene.tokens[id] ? [scene.tokens[id]] : []));
+    if (mine.length === 0) return null;
     const at = this.options.toWorld(point);
     let best: PlayerDoor | null = null;
-    let reach = Math.max((this.scene?.map.cellSize ?? 70) / 5, DOOR_PRESS_PIXELS / Math.max(this.options.zoom(), 1e-6));
+    let reach = Math.max(cellSize * DOOR_BADGE_RADIUS, DOOR_PRESS_PIXELS / Math.max(this.options.zoom(), 1e-6));
     for (const door of doors) {
-      // A secret door has no badge: players cannot ask for it.
-      if (door.secret) continue;
-      const distance = segmentDistance(at, door);
+      if (door.secret || !doorInReach(door, mine, cellSize)) continue;
+      const middle = doorMiddle(door);
+      const distance = Math.hypot(at.x - middle.x, at.y - middle.y);
       if (distance <= reach) {
         best = door;
         reach = distance;
