@@ -2,9 +2,11 @@
  * The light of a lit scene as players get it (`PlayerGlow`): a small picture over the map, worked out on the GM's
  * side from the light Atlas hands out (`FrameLight`) and the colours of the scene's lights and carried lights.
  *
- * Only cells a token's sight shows now get light: a cell only the explored memory shows is dimmed, and one the window
- * does not show is black (the darkness fog covers it anyway). So the picture carries nothing of what players do not
- * see: no light, colour or wall beyond their sight. Where a cell is seen, the darker its light the more black is laid
+ * Only cells a token's sight shows now, and those beside them, get light: so light ends where its reach does (cut by the
+ * walls), not at a cell's edge. A cell only the explored memory shows is dimmed, and one further from sight takes the
+ * scene's ambient light alone, as if no light reached it (the darkness fog covers it; under the fog's soft edge it
+ * shades on smoothly rather than in cell-sized steps). So the picture carries nothing of what players do not see: no
+ * light, colour or wall beyond the cells around their sight. Where a cell is seen, the darker its light the more black is laid
  * over it (a token seeing in the dark still sees, dimly), and the lights reaching it tint it with their colours.
  */
 import { insideSpans } from '../../../../packages/atlas-host/src/lighting/darknessRaster';
@@ -157,6 +159,9 @@ export function overlayPixels(light: FrameLight, sources: readonly LightSource[]
       blue[index]! += given * source.b;
     });
   }
+  const nearSight = besideSeen(light);
+  // What a cell away from sight shows: the scene's ambient light alone, whatever lights stand there.
+  const away = Math.round(DARK_SHADE * (1 - Math.min(1, Math.max(0, light.ambient.ambient))) * 255);
   const data = new Uint8ClampedArray(count * 4);
   for (let row = 0; row < grid.rows; row++) {
     const cellRow = Math.floor(((row + 0.5) * size) / light.cellSize);
@@ -165,12 +170,8 @@ export function overlayPixels(light: FrameLight, sources: readonly LightSource[]
       const cellCol = Math.floor(((col + 0.5) * size) / light.cellSize);
       const cell = cellRow < light.rows && cellCol < light.cols ? cellRow * light.cols + cellCol : -1;
       const out = index * 4;
-      if (cell < 0 || light.shown[cell] !== 1) {
-        data[out + 3] = 255;
-        continue;
-      }
-      if (light.seen[cell] !== 1) {
-        data[out + 3] = Math.round(MEMORY_SHADE * 255);
+      if (cell < 0 || nearSight[cell] !== 1) {
+        data[out + 3] = light.shown[cell] === 1 ? Math.round(MEMORY_SHADE * 255) : away;
         continue;
       }
       const base = ambient[index]!;
@@ -193,6 +194,20 @@ export function overlayPixels(light: FrameLight, sources: readonly LightSource[]
 /** What `encodePng` uses of a document: a canvas, never put on the page. */
 export interface CanvasDocument {
   createElement(tag: 'canvas'): HTMLCanvasElement;
+}
+
+/** The cells a token's sight shows now, and every cell beside one of them (diagonals too). */
+function besideSeen({ cols, rows, seen }: FrameLight): Uint8Array {
+  const near = new Uint8Array(cols * rows);
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      if (seen[row * cols + col] !== 1) continue;
+      for (let r = Math.max(0, row - 1); r <= Math.min(rows - 1, row + 1); r++) {
+        for (let c = Math.max(0, col - 1); c <= Math.min(cols - 1, col + 1); c++) near[r * cols + c] = 1;
+      }
+    }
+  }
+  return near;
 }
 
 /** The pixels as a PNG data URL through a canvas; null where none can be made (no DOM, no 2D context). */
