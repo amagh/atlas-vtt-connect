@@ -1,12 +1,15 @@
 /**
  * The doors players see (`PlayerScene.doors`), over the grid and under the tokens: a closed door as a wooden bar across
- * its opening, an open one as its leaf swung a quarter turn from its first end, with the opening marked faintly.
+ * its opening (a brass lock at its middle when locked), an open one as its leaf swung a quarter turn from its first end,
+ * with the opening marked faintly. A tap on one with the Move tool asks the GM to turn it (`PlayerTools`).
  */
 import { intersects } from '../camera';
 import type { PlayerLayer } from './layerTypes';
 
 export const DOOR_WOOD = '#8a5a2b';
 export const DOOR_EDGE = '#2a1a0c';
+/** A locked door's lock, at its middle. */
+export const DOOR_LOCK = '#d9b44a';
 /** A door's thickness, as a share of a grid cell, and its least in world pixels. */
 const DOOR_THICKNESS = 0.14;
 const DOOR_MIN_THICKNESS = 3;
@@ -17,7 +20,7 @@ export function createDoorsLayer(): PlayerLayer {
       const doors = frame.scene.doors;
       if (!doors || doors.length === 0) return;
       const thickness = Math.max(DOOR_MIN_THICKNESS, frame.scene.map.cellSize * DOOR_THICKNESS);
-      for (const { x1, y1, x2, y2, open } of doors) {
+      for (const { x1, y1, x2, y2, open, locked } of doors) {
         const length = Math.hypot(x2 - x1, y2 - y1);
         const reach = length + thickness;
         const area = { x: Math.min(x1, x2) - reach, y: Math.min(y1, y2) - reach, width: Math.abs(x2 - x1) + 2 * reach, height: Math.abs(y2 - y1) + 2 * reach };
@@ -26,6 +29,7 @@ export function createDoorsLayer(): PlayerLayer {
         if (!open) {
           surface.paths([[from, { x: x2, y: y2 }]], false, { stroke: DOOR_EDGE, lineWidth: thickness + 2 * frame.pixel * 1.5 });
           surface.paths([[from, { x: x2, y: y2 }]], false, { stroke: DOOR_WOOD, lineWidth: thickness });
+          if (locked) surface.circle((x1 + x2) / 2, (y1 + y2) / 2, thickness * 0.75, { fill: DOOR_LOCK, stroke: DOOR_EDGE, lineWidth: frame.pixel * 1.5 });
           continue;
         }
         // Swung a quarter turn about its first end, to the left of the opening.

@@ -5,10 +5,11 @@ import { liveLighting } from '../scene/sceneLighting';
 import type { DiceLookSource } from '../scene/sceneSources';
 import { presentedSource } from './presentedSource';
 import type { StockMeasures } from '../../../connect/stockMeasures';
+import type { DoorToggle } from '../tools/DoorRequests';
 import type { ProjectedMovement } from '../scene/projectForPlayers';
 import { handouts } from '../handouts';
 import { createTabScenes } from './tabScenes';
-import { diceHostPart, gmRollsShared, laserRelayPart, movesOnTurn, offeredRulesOf, pingRelayPart, sheetHostPart, measureHostPart, tokenControlPart, type StatblockSource } from './toolParts';
+import { diceHostPart, gmRollsShared, laserRelayPart, movesOnTurn, offeredRulesOf, pingRelayPart, sheetHostPart, measureHostPart, doorRequestsPart, tokenControlPart, type StatblockSource } from './toolParts';
 
 type SessionAtlas = Pick<AtlasExtension, 'presentation' | 'views' | 'rules' | 'settings' | 'on'>;
 
@@ -28,7 +29,7 @@ export interface OptionalNamespaces {
 }
 
 export type AtlasSessionDeps = Pick<Deps,
-  'presented' | 'views' | 'diceLook' | 'collectionGrid' | 'coneAngle' | 'movement' | 'resources' | 'conditions' | 'initiativeRules' | 'watchResources' | 'playerViewSettings' | 'dice' | 'diceRules' | 'laser' | 'lighting' | 'tokenControl' | 'sheets' | 'pings' | 'templates' | 'handout'
+  'presented' | 'views' | 'diceLook' | 'collectionGrid' | 'coneAngle' | 'movement' | 'resources' | 'conditions' | 'initiativeRules' | 'watchResources' | 'playerViewSettings' | 'dice' | 'diceRules' | 'laser' | 'lighting' | 'tokenControl' | 'sheets' | 'pings' | 'templates' | 'doors' | 'handout'
   | 'tabScenes'
 >;
 
@@ -89,6 +90,8 @@ export function sessionDeps(atlas: SessionAtlas, { dice, lasers, lighting, token
     pings: pingRelayPart(lasers),
     // Atlas's kept measures hold players' templates and spells: a stock Atlas 0.15 offers its store (`stockAtlas.ts`).
     templates: measureHostPart((atlas as { measures?: StockMeasures }).measures ?? null),
+    // Players' door requests: a stock Atlas turns doors through its own store (`stockDoors.ts`).
+    doors: doorRequestsPart((atlas as { doors?: DoorToggle }).doors ?? null),
     handout: handouts,
     ...(lighting ? { lighting: liveLighting(lighting) } : {}),
     // One per hosted session, disposed with it.

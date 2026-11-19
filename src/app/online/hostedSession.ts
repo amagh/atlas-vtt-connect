@@ -94,6 +94,8 @@ export interface OptionalParts {
   pings?: (context: HostedContext) => HostedPart;
   /** Players' templates and spells, kept in Atlas's own measures. */
   templates?: (context: HostedContext) => HostedPart & { clear(): void; hasAny(): boolean };
+  /** Players' requests to open or close doors, which the GM allows. Without it none is taken. */
+  doors?: (context: HostedContext) => HostedPart;
   /** The notes of readable pins, sent to a player who opens one. Without it opening a pin shows nothing. */
   notes?: (context: HostedContext) => HostedPart;
 }
@@ -242,6 +244,7 @@ export async function hostSession(env: HostEnvironment, sharing: HostedSharingHo
   const laser = env.laser?.(context) ?? null;
   const pings = env.pings?.(context) ?? null;
   const templates = env.templates?.(context) ?? null;
+  const doors = env.doors?.(context) ?? null;
   // Players in augmented reality, as eyes on Tabletop's board: only where there is one.
   const arViews = boardHub ? new ArViewRelay({ session: scenes, projection: hub, board: boardHub, colorOf: (playerId) => colors.colorOf(playerId) }) : null;
   boardHub?.useTemplates(templates instanceof MeasureHost ? templates : null);
@@ -277,7 +280,7 @@ export async function hostSession(env: HostEnvironment, sharing: HostedSharingHo
     stopSharing = null;
     stopErrors();
     assetServer.stop();
-    for (const part of given([arViews, notes, templates, pings, sheets, tokenControl, laser, dice])) part.stop();
+    for (const part of given([doors, arViews, notes, templates, pings, sheets, tokenControl, laser, dice])) part.stop();
     colors.stop();
     cutsceneSender.stop();
     boardSender.stop();
@@ -300,7 +303,7 @@ export async function hostSession(env: HostEnvironment, sharing: HostedSharingHo
     boardSender.start();
     cutsceneSender.start();
     assetServer.start();
-    for (const part of given([tokenControl, dice, laser, sheets, pings, templates, notes, arViews])) {
+    for (const part of given([tokenControl, dice, laser, sheets, pings, templates, notes, arViews, doors])) {
       part.start();
       parts.push(part);
     }

@@ -9,6 +9,8 @@ import { LaserRelay } from '../tools/LaserRelay';
 import { SheetHost } from '../tools/SheetHost';
 import { PingRelay } from '../tools/PingRelay';
 import { MeasureHost } from '../tools/MeasureHost';
+import { DoorRequests, type DoorToggle } from '../tools/DoorRequests';
+import { showDoorRequestNotice } from '../ui/doorRequestNotice';
 import type { StockMeasures } from '../../../connect/stockMeasures';
 import type { SheetCard } from '../../../../packages/atlas-host/src/sheets/sheetCards';
 
@@ -110,6 +112,11 @@ export function pingRelayPart(lasers: LasersApi | null): NonNullable<OptionalPar
     session, projection, ...(board ? { board } : {}), ...(colors ? { colorOf: (playerId: string) => colors.colorOf(playerId) } : {}),
     ...(typeof showPing === 'function' ? { show: (viewId: ViewId, ping: { x: number; y: number; color: string }) => showPing.call(lasers, viewId, ping) } : {}),
   });
+}
+
+/** Players' door requests, which the GM allows in a notice; `doors` null where this Atlas cannot turn one (none is taken). */
+export function doorRequestsPart(doors: DoorToggle | null): NonNullable<OptionalParts['doors']> {
+  return ({ session, projection, cutscene }) => new DoorRequests({ session, projection, doors, ask: showDoorRequestNotice, ...(cutscene ? { cutscene } : {}) });
 }
 
 /**

@@ -330,6 +330,10 @@ export class OnlineJoinService {
     return this.joined?.session?.sendPing(x, y) ?? false;
   }
 
+  sendDoorRequest(door: { x1: number; y1: number; x2: number; y2: number }): boolean {
+    return this.joined?.session?.sendDoorRequest(door) ?? false;
+  }
+
   /** Asks the GM for the note of a readable pin of the scene shown. */
   sendNoteRequest(pinId: string): boolean {
     return this.joined?.session?.sendNoteRequest(pinId) ?? false;

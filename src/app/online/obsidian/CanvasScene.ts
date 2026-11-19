@@ -25,7 +25,7 @@ import { PageToolbar } from '../../../../online-client/toolbar.mts';
 import type { BoardDiceOffer, PlayerSessionState } from '../PlayerSession';
 import { RateLimit } from '../rateLimit';
 import type { SceneCamera } from '../scene/sceneCamera';
-import type { PlayerScene } from '../scene/sceneTypes';
+import type { PlayerDoor, PlayerScene } from '../scene/sceneTypes';
 import type { DiceSelection } from '@atlas-vtt/shared/rules';
 import { DICE_LIMITS, type DiceLogEntry, type PhysicalRoll, type PlayerLaser } from '../tools/toolMessages';
 import type { ViewSurface } from '../view/ViewSurface';
@@ -39,7 +39,7 @@ import { rollRefusal } from './onlineRollRefusal';
 import { onlineSceneStatus } from './onlineSceneStatus';
 
 export type CanvasSceneService = Pick<OnlineJoinService, 'attach' | 'image' | 'reconnect' | 'sendDiceRoll' | 'sendTokenMove' | 'sendLaser' | 'sendSheetRoll' | 'sendPing' | 'sendTemplate'>
-  & Partial<Pick<OnlineJoinService, 'sendNoteRequest' | 'model' | 'miniPainter' | 'boardPainter' | 'wantBoard' | 'images' | 'sendDiceResult' | 'sendSpell' | 'sendColor' | 'playerColor' | 'sendCutsceneReady'>>;
+  & Partial<Pick<OnlineJoinService, 'sendNoteRequest' | 'model' | 'miniPainter' | 'boardPainter' | 'wantBoard' | 'images' | 'sendDiceResult' | 'sendSpell' | 'sendColor' | 'playerColor' | 'sendCutsceneReady' | 'sendDoorRequest'>>;
 
 export interface CanvasSceneOptions {
   dom: SceneDom;
@@ -436,6 +436,7 @@ export class CanvasScene implements OnlineSceneSink {
         sendMove: (tokenId, x, y) => service.sendTokenMove(tokenId, x, y),
         sendLaser: (points, lifted, dt, color, size) => service.sendLaser(points, lifted, dt, color, size),
         sendPing: (x, y) => service.sendPing(x, y),
+        ...(service.sendDoorRequest ? { sendDoorRequest: (door: PlayerDoor) => service.sendDoorRequest?.(door) ?? false } : {}),
         sendTemplate: (change) => service.sendTemplate(change),
         notice: dom.moveNotice,
         hoverCard: dom.hoverCard,

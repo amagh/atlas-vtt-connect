@@ -9,7 +9,7 @@
  * the map.
  */
 import type { SceneCamera } from '../src/app/online/scene/sceneCamera';
-import type { PlayerScene, ScenePoint } from '../src/app/online/scene/sceneTypes';
+import type { PlayerDoor, PlayerScene, ScenePoint } from '../src/app/online/scene/sceneTypes';
 import type { PlayerLaser } from '../src/app/online/tools/toolMessages';
 import type { PlayerPing } from '../src/app/online/tools/pings';
 import type { MapTemplate, TemplateShape } from '../src/app/online/tools/templates';
@@ -72,6 +72,8 @@ export interface MapViewOptions {
   sendLaser(points: ScenePoint[], lifted: boolean, dt: number[], color?: string, size?: number): boolean;
   /** Sends a ping at a world point; false when it could not go. */
   sendPing?(x: number, y: number): boolean;
+  /** Asks the GM to open or close a door; without it a door is only drawn. */
+  sendDoorRequest?(door: PlayerDoor): boolean;
   /** Asks the GM to add or remove a template; false when it could not go. */
   sendTemplate?(change: TemplateChange): boolean;
   /** The laser colour remembered from an earlier visit. */
@@ -178,6 +180,7 @@ export class MapView {
       now: options.now ?? ((): number => performance.now()),
       sendLaser: (points, lifted, dt, color, size) => options.sendLaser(points, lifted, dt, color, size),
       sendPing: (x, y) => options.sendPing?.(x, y) ?? false,
+      ...(options.sendDoorRequest ? { sendDoorRequest: (door: PlayerDoor) => options.sendDoorRequest?.(door) ?? false } : {}),
       sendTemplate: (change) => options.sendTemplate?.(change) ?? false,
       laserColor: options.laserColor ?? null,
       laserSize: options.laserSize ?? null,

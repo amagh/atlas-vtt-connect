@@ -30,6 +30,7 @@ import { partyScenes, SavedSceneTokens } from './stockParty/savedScene';
 import { AtlasHost, loadDeferredLeaves, wakeAtlasForHosting } from '../../packages/atlas-host/src/index';
 import { claimHostWhileHosting } from './hostClaim';
 import { stockLasersApi } from './stockLasers/stockLasers';
+import { stockDoorsApi } from './stockDoors';
 import { stockTokensApi } from './stockTokens/stockTokens';
 import { stockUi } from './stockUi/stockUi';
 
@@ -894,6 +895,8 @@ export function stockAtlasApi(app: App, atlasPlugin: StockPlugin): AtlasApi {
             return shownLevel(state.levels, scene && scene.tabId === loadedTabId(view) ? scene.levelId : state.viewedLevel);
           },
         }),
+        // Players' door requests the GM allowed, turned through Atlas's own store. The extension API has no such namespace.
+        doors: stockDoorsApi((viewId) => trackedView(app, viewId)),
         tokens: stockTokensApi({
           view: (viewId) => trackedView(app, viewId),
           mapSize,

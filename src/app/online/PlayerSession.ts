@@ -235,6 +235,15 @@ export class PlayerSession {
     return true;
   }
 
+  /** Asks the GM to open or close a door of the scene the player has, by its opening; false when it cannot go. */
+  sendDoorRequest(door: { x1: number; y1: number; x2: number; y2: number }): boolean {
+    const scene = this.inbox.scene;
+    if (this.finished || this.state.status !== 'admitted' || !this.link || !scene) return false;
+    const { x1, y1, x2, y2 } = door;
+    this.link.send('control', encodeControl({ v: 1, type: 'door-request', sceneId: scene.sceneId, x1, y1, x2, y2 }));
+    return true;
+  }
+
   /** Sends a ping at a world point of the scene the player has; false when it cannot go. */
   sendPing(x: number, y: number): boolean {
     const scene = this.inbox.scene;

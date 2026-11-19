@@ -221,7 +221,7 @@ function projectDoors(objects: unknown, visible: Shows): PlayerDoor[] {
   const doors: PlayerDoor[] = [];
   for (const raw of walls as unknown[]) {
     if (typeof raw !== 'object' || raw === null) continue;
-    const wall = raw as { type?: unknown; closed?: unknown; p1?: unknown; p2?: unknown };
+    const wall = raw as { type?: unknown; closed?: unknown; locked?: unknown; p1?: unknown; p2?: unknown };
     const open = wall.closed === false;
     if (wall.type !== 'door' && !(wall.type === 'secret-door' && open)) continue;
     const p1 = endOf(wall.p1);
@@ -230,7 +230,7 @@ function projectDoors(objects: unknown, visible: Shows): PlayerDoor[] {
     const middle = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2, width: 0, height: 0 };
     if (!visible.shows(middle)) continue;
     const at = (value: number): number => finiteOr(value, 0, SCENE_RANGES.coordinate);
-    doors.push({ x1: at(p1.x), y1: at(p1.y), x2: at(p2.x), y2: at(p2.y), open });
+    doors.push({ x1: at(p1.x), y1: at(p1.y), x2: at(p2.x), y2: at(p2.y), open, ...(wall.locked === true ? { locked: true as const } : {}) });
   }
   doors.sort((a, b) => a.x1 - b.x1 || a.y1 - b.y1 || a.x2 - b.x2 || a.y2 - b.y2 || Number(a.open) - Number(b.open));
   return doors.slice(0, SCENE_LIMITS.doors);

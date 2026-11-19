@@ -432,6 +432,8 @@ export interface PlayerDoor {
   x2: number;
   y2: number;
   open: boolean;
+  /** The GM locked it: a player may still ask, and the GM decides. */
+  locked?: true;
 }
 
 /**
