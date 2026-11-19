@@ -10,6 +10,11 @@ import type { PlayerFogOp, PlayerScene } from '../../scene/sceneTypes';
 import { intersects, type WorldRect } from '../camera';
 import type { LayerSurface, ViewSurface } from '../ViewSurface';
 import type { LayerFrame, PlayerLayer } from './layerTypes';
+import { DARKNESS_FOG_ID } from '../../scene/darknessFog';
+import { softDarkness, type SoftDarkness } from './softDarkness';
+
+/** How far into the dark side a lit scene's darkness takes to grow full, as a share of a grid cell (`softDarkness`). */
+export const DARKNESS_SOFTNESS = 0.5;
 
 /** The fog image's long side, in pixels, at most. */
 export const FOG_CACHE_MAX_SIDE = 4096;
@@ -68,13 +73,16 @@ export class FogLayer implements PlayerLayer {
 
   private rebuild(surface: ViewSurface, scene: PlayerScene): void {
     this.dispose();
-    const shapes = fogShapes(scene.fog);
-    const area = shapes.length > 0 ? fogArea(scene, shapes) : null;
-    const layer = area ? this.paint(surface, shapes, area) : null;
+    // A lit scene's darkness is drawn soft, last as its order says, where the map has a size; else as any other fog.
+    const darkness = Object.hasOwn(scene.fog, DARKNESS_FOG_ID) ? scene.fog[DARKNESS_FOG_ID] : undefined;
+    const soft = darkness?.type === 'lasso' && !darkness.erase ? softDarkness(darkness.points, scene.map, scene.map.cellSize * DARKNESS_SOFTNESS) : null;
+    const shapes = fogShapes(soft ? withoutDarkness(scene.fog) : scene.fog);
+    const area = shapes.length > 0 || soft ? fogArea(scene, shapes) : null;
+    const layer = area ? this.paint(surface, shapes, area, soft) : null;
     this.cache = { fog: scene.fog, mapWidth: scene.map.width, mapHeight: scene.map.height, area, layer };
   }
 
-  private paint(surface: ViewSurface, shapes: readonly FogShape[], area: WorldRect): LayerSurface | null {
+  private paint(surface: ViewSurface, shapes: readonly FogShape[], area: WorldRect, soft: SoftDarkness | null): LayerSurface | null {
     const scale = Math.min(1, FOG_CACHE_MAX_SIDE / Math.max(area.width, area.height));
     const width = Math.max(1, Math.round(area.width * scale));
     const height = Math.max(1, Math.round(area.height * scale));
@@ -84,8 +92,18 @@ export class FogLayer implements PlayerLayer {
     layer.begin(width, height, null);
     layer.setCamera(scale, 0 - area.x * scale, 0 - area.y * scale);
     for (const shape of shapes) paintShape(layer, shape);
+    if (soft) layer.raster(soft.image, 0, 0, soft.width, soft.height);
     return layer;
   }
+}
+
+/** The fog without the lit scene's darkness, by its own properties. */
+function withoutDarkness(fog: Readonly<Record<string, PlayerFogOp>>): Record<string, PlayerFogOp> {
+  const rest: Record<string, PlayerFogOp> = {};
+  for (const [id, op] of Object.entries(fog)) {
+    if (id !== DARKNESS_FOG_ID) Object.defineProperty(rest, id, { value: op, enumerable: true, writable: true, configurable: true });
+  }
+  return rest;
 }
 
 function paintShape(surface: ViewSurface, shape: FogShape): void {
