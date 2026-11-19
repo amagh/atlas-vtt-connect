@@ -5,6 +5,7 @@
 import type { SceneLayer } from '@atlas-vtt/shared/draw';
 import { createDrawingsLayer } from './drawingsLayer';
 import { FogLayer } from './fogLayer';
+import { createGlowLayer } from './glowLayer';
 import { createGridLayer } from './gridLayer';
 import type { PlayerLayer } from './layerTypes';
 import type { MiniLayer } from '../minis/miniLayer';
@@ -12,10 +13,19 @@ import { createMapLayer } from './mapLayer';
 import { createTextsLayer } from './textsLayer';
 import { createTokensLayer } from './tokensLayer';
 
+/** Draws `layers` in order as one layer: the scene's light goes on the map's own layer, under the grid. */
+function stacked(...layers: PlayerLayer[]): PlayerLayer {
+  return {
+    draw: (surface, frame) => { for (const layer of layers) layer.draw(surface, frame); },
+    animating: () => layers.some((layer) => layer.animating?.() === true),
+    dispose: () => { for (const layer of layers) layer.dispose?.(); },
+  };
+}
+
 /** `minis`: the 3D minis on tokens (`minis/miniLayer.ts`); without it none is drawn. */
 export function createSceneLayers(options: { minis?: MiniLayer } = {}): Record<SceneLayer, PlayerLayer> {
   return {
-    map: createMapLayer(),
+    map: stacked(createMapLayer(), createGlowLayer()),
     grid: createGridLayer(),
     tokens: createTokensLayer(options.minis ? { minis: options.minis } : {}),
     texts: createTextsLayer(),

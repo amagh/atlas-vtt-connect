@@ -40,6 +40,11 @@ export interface DarknessRaster {
   cellSize: number;
   map: MapSize;
   dark: Uint8Array;
+  /**
+   * Cells a token's sight shows now (1), as against those only the explored memory shows: the online light overlay
+   * lights only these. Coarsened like `dark`: a cell is seen only when every sample within it is.
+   */
+  seen: Uint8Array;
 }
 
 /** What the raster is made of. */
@@ -65,7 +70,7 @@ export function darknessRaster(lighting: Lighting, map: MapSize, maxCellsPerSide
 function emptyRaster(map: MapSize, cellSize: number): DarknessRaster {
   const cols = Math.max(1, Math.ceil(map.width / cellSize));
   const rows = Math.max(1, Math.ceil(map.height / cellSize));
-  return { cols, rows, cellSize, map, dark: new Uint8Array(cols * rows).fill(1) };
+  return { cols, rows, cellSize, map, dark: new Uint8Array(cols * rows).fill(1), seen: new Uint8Array(cols * rows) };
 }
 
 function sampledRaster(lighting: Lighting, explored: ExploredImage | null, map: MapSize, cellSize: number): DarknessRaster {
@@ -78,10 +83,13 @@ function sampledRaster(lighting: Lighting, explored: ExploredImage | null, map: 
 function coarsened(samples: DarknessRaster, cellSize: number): DarknessRaster {
   const grid = emptyRaster(samples.map, cellSize);
   grid.dark.fill(0);
+  grid.seen.fill(1);
   const per = cellSize / samples.cellSize;
   for (let row = 0; row < samples.rows; row++) {
     for (let col = 0; col < samples.cols; col++) {
-      if (samples.dark[row * samples.cols + col]) grid.dark[Math.floor(row / per) * grid.cols + Math.floor(col / per)] = 1;
+      const index = Math.floor(row / per) * grid.cols + Math.floor(col / per);
+      if (samples.dark[row * samples.cols + col]) grid.dark[index] = 1;
+      if (!samples.seen[row * samples.cols + col]) grid.seen[index] = 0;
     }
   }
   return grid;
@@ -95,7 +103,7 @@ const codeOf = (level: LightLevel): number => (level === 'magical-dark' ? MAGICA
 
 function showMap({ sight, ambient, reaches }: Lighting, explored: ExploredImage | null, grid: DarknessRaster): void {
   const levels = lightLevels(grid, ambient, reaches);
-  const show = (index: number): void => { grid.dark[index] = 0; };
+  const show = (index: number): void => { grid.dark[index] = 0; grid.seen[index] = 1; };
   if (sight.all) {
     for (let index = 0; index < levels.length; index++) if (perceivedLevel(NORMAL_SIGHT, levelOf(levels[index]!)) !== null) show(index);
     return;
@@ -109,7 +117,7 @@ function showMap({ sight, ambient, reaches }: Lighting, explored: ExploredImage 
   }
   if (explored) {
     forEveryCentre(grid, (index, x, y) => {
-      if (isExplored(explored, grid.map, x, y)) show(index);
+      if (isExplored(explored, grid.map, x, y)) grid.dark[index] = 0;
     });
   }
 }

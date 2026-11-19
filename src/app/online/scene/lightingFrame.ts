@@ -1,6 +1,7 @@
 import { darknessOf, NO_DARKNESS, type Darkness } from './darknessFog';
 import type { WorldBounds } from './FogCoverage';
 import type { MapSize } from './sceneTypes';
+import type { AmbientLight, LightReach } from '../../../../packages/atlas-host/src/lighting/visionRules';
 
 /**
  * The raster the darkness of a lit scene is read from: one flag per square cell, dark where
@@ -12,6 +13,21 @@ export interface DarknessGrid {
   cellSize: number;
   map: MapSize;
   dark: Uint8Array;
+}
+
+/**
+ * What lights the map where players see it (`PlayerLight` of the visibility answer), on the raster's grid: the cells a
+ * token's sight shows now (1) and those the window shows at all (1, sight or explored memory). Stays on the GM's side;
+ * `lightOverlay` works the players' picture out of it.
+ */
+export interface FrameLight {
+  readonly cols: number;
+  readonly rows: number;
+  readonly cellSize: number;
+  readonly seen: Uint8Array;
+  readonly shown: Uint8Array;
+  readonly ambient: AmbientLight;
+  readonly reaches: readonly LightReach[];
 }
 
 /** What a lit scene adds to the projection: which tokens players see, and the darkness over the map. */
@@ -28,6 +44,8 @@ export interface LightingFrame {
   shows(bounds: WorldBounds): boolean;
   /** Set when the view's lighting could not be read: nothing but the dark map is sent (`closedFrame`). */
   closed?: boolean;
+  /** The light over what players see, where Atlas hands it out; the same object while it does not change. */
+  light?: FrameLight;
   /**
    * Set when Atlas says lighting hides nothing (`unlit`) on a scene saved lit (dynamic lighting off): the
    * projection is then exactly the unlit one (`OPEN_FRAME`). Only Atlas's own answer gives it.

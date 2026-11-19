@@ -416,6 +416,18 @@ export interface PlayerScene {
   pins?: PlayerPin[];
   /** The image the GM shows players, or null; absent from an older GM. */
   handout?: PlayerHandout | null;
+  /** How the lit scene's light falls where players see it, or null where none does; absent from an older GM and on an unlit scene. */
+  glow?: PlayerGlow | null;
+}
+
+/**
+ * The light of a lit scene as players see it: a picture stretched over the map from its top-left corner, drawn over
+ * the map and under the tokens. Black where the scene is dark to their sight, tinted by the colour of the lights
+ * where it is lit; worked out by the GM only over the cells players see now, so it shows nothing of the rest.
+ */
+export interface PlayerGlow {
+  /** A PNG as a data URL (`data:image/png;base64,…`). */
+  image: string;
 }
 
 export const PLAYER_MEASURE_SHAPES = ['ruler', 'circle', 'cone', 'square', 'line'] as const;
@@ -473,7 +485,7 @@ export type PlayerSceneBody = Omit<PlayerScene, 'fog' | 'drawings'>;
 export const SCENE_RECORD_KEYS = ['tokens', 'fog', 'texts', 'drawings', 'measures'] as const;
 export type SceneRecordKey = typeof SCENE_RECORD_KEYS[number];
 /** Fields replaced as a whole when they differ. */
-export const SCENE_FIELD_KEYS = ['map', 'grid', 'widgets', 'initiative', 'measurement', 'pins', 'handout'] as const;
+export const SCENE_FIELD_KEYS = ['map', 'grid', 'widgets', 'initiative', 'measurement', 'pins', 'handout', 'glow'] as const;
 export type SceneFieldKey = typeof SCENE_FIELD_KEYS[number];
 
 export interface ScenePatchBody {

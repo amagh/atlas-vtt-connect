@@ -2,6 +2,8 @@
  * What the player visibility reader hands out, as Atlas's extension API names it (`@atlas-vtt/api-types`, which
  * Tabletop does not have): the same shapes, so Connect passes them on as its API's.
  */
+import type { AmbientLight, LightReach } from './visionRules';
+
 export type Disposer = () => void;
 
 /** How the player window shows a token: seen, outlined only (sensed), or not at all. */
@@ -20,7 +22,20 @@ export type PlayerVisibility =
     readonly darkness: { readonly cellSize: number; readonly cols: number; readonly rows: number; readonly shown: Uint8Array };
     /** The window shows explored memory where no token sees. */
     readonly showsExplored: boolean;
+    /** What lights the map, for a light overlay over what players see; absent where it cannot be read. Not Atlas's API. */
+    readonly light?: PlayerLight;
   };
+
+/**
+ * The light over the cells of `darkness`: which of them a token's sight shows now (1), not only the explored memory,
+ * and the scene's ambient light and light reaches, walls already cut out. Read on the GM's side only: a caller sends
+ * players what it works out of these, only over the cells they see.
+ */
+export interface PlayerLight {
+  readonly seen: Uint8Array;
+  readonly ambient: AmbientLight;
+  readonly reaches: readonly LightReach[];
+}
 
 export interface PlayerVisibilityOptions {
   /** The map's long side holds at most this many cells (16–1024, default 384). */

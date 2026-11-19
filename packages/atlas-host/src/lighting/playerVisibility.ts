@@ -314,6 +314,7 @@ export function playerVisibilityApi(deps: PlayerVisibilityDeps): LightingApi {
       tokens: Object.freeze(tokens),
       darkness: Object.freeze({ cellSize: grid.cellSize, cols: grid.cols, rows: grid.rows, shown }),
       showsExplored: explored !== null,
+      light: Object.freeze({ seen: grid.seen.slice(), ambient, reaches }),
     });
   };
 
