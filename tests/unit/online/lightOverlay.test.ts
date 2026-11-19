@@ -65,14 +65,21 @@ describe('the light overlay', () => {
     expect(at(pixels, 45, 48)[3]).toBeLessThan(Math.round(DARK_SHADE * 255));
   });
 
-  it('carries nothing of what players do not see: black where hidden, dimmed where only remembered', () => {
+  it('carries nothing of what players do not see: ambient dark where hidden, dimmed where only remembered', () => {
     const sources = lightSources({ lights: { l1: { x: 150, y: 48, emission: { color: '#00ff00' } } } });
     const pixels = overlayPixels(light([torch(150, 48)], { seen: (x) => x < 96, shown: (x) => x < 128 }), sources, MAP, 10)!;
-    expect(at(pixels, 150, 48)).toEqual([0, 0, 0, 255]);
+    expect(at(pixels, 150, 48)).toEqual([0, 0, 0, Math.round(DARK_SHADE * 255)]);
     expect(at(pixels, 110, 48)).toEqual([0, 0, 0, Math.round(MEMORY_SHADE * 255)]);
     const empty = overlayPixels(light([], { seen: (x) => x < 96, shown: (x) => x < 128 }), [], MAP, 10)!;
     // The light beyond their sight changes no pixel they get.
     expect(pixels.data).toEqual(empty.data);
+  });
+
+  it('lights the cells beside sight too, so light ends where its reach does rather than at a cell\'s edge', () => {
+    const near = overlayPixels(light([torch(90, 48)], { seen: (x) => x < 96, shown: (x) => x < 96 }), [], MAP, 10)!;
+    // One cell past sight (x 96–104) the torch still lights; two cells past, only the ambient dark.
+    expect(at(near, 100, 48)[3]).toBeLessThan(Math.round(DARK_SHADE * 255));
+    expect(at(near, 108, 48)[3]).toBe(Math.round(DARK_SHADE * 255));
   });
 
   it('leaves magical darkness unlit, whatever light falls in it', () => {
