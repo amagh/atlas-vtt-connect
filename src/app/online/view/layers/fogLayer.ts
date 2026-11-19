@@ -13,8 +13,6 @@ import type { LayerFrame, PlayerLayer } from './layerTypes';
 import { DARKNESS_FOG_ID } from '../../scene/darknessFog';
 import { softDarkness, type SoftDarkness } from './softDarkness';
 
-/** How far into the dark side a lit scene's darkness takes to grow full, as a share of a grid cell (`softDarkness`). */
-export const DARKNESS_SOFTNESS = 0.5;
 
 /** The fog image's long side, in pixels, at most. */
 export const FOG_CACHE_MAX_SIDE = 4096;
@@ -75,7 +73,7 @@ export class FogLayer implements PlayerLayer {
     this.dispose();
     // A lit scene's darkness is drawn soft, last as its order says, where the map has a size; else as any other fog.
     const darkness = Object.hasOwn(scene.fog, DARKNESS_FOG_ID) ? scene.fog[DARKNESS_FOG_ID] : undefined;
-    const soft = darkness?.type === 'lasso' && !darkness.erase ? softDarkness(darkness.points, scene.map, scene.map.cellSize * DARKNESS_SOFTNESS) : null;
+    const soft = darkness?.type === 'lasso' && !darkness.erase ? softDarkness(darkness.points, scene.map) : null;
     const shapes = fogShapes(soft ? withoutDarkness(scene.fog) : scene.fog);
     const area = shapes.length > 0 || soft ? fogArea(scene, shapes) : null;
     const layer = area ? this.paint(surface, shapes, area, soft) : null;
