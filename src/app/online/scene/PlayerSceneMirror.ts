@@ -145,6 +145,7 @@ export class PlayerSceneMirror {
       ...(body.pins ? { pins: body.pins } : {}),
       ...(body.handout !== undefined ? { handout: body.handout } : {}),
       ...(body.glow !== undefined ? { glow: body.glow } : {}),
+      ...(body.doors ? { doors: body.doors } : {}),
       fog: keepFogIdentity(this.current?.fog, toRecord(pending.fog)), drawings: toRecord(pending.drawings),
     });
   }

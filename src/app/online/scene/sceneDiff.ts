@@ -42,11 +42,13 @@ export function diffScenes(previous: PlayerScene, next: PlayerScene): ScenePatch
   const patch: ScenePatchBody = { set: {}, upsert: {}, remove: {} };
   let changed = false;
   for (const key of SCENE_FIELD_KEYS) {
-    // A scene's light left out and none (null) are the same to a page; one that went away is sent as null, since JSON
-    // drops undefined and the page would keep the last.
-    const glow = key === 'glow';
-    if (glow ? sameValue(previous.glow ?? null, next.glow ?? null) : sameValue(previous[key], next[key])) continue;
-    (patch.set as AnyRecord)[key] = glow ? next.glow ?? null : next[key];
+    // A scene's light or doors left out and none (null, []) are the same to a page; ones that went away are sent as
+    // none, since JSON drops undefined and the page would keep the last.
+    const none = key === 'glow' ? null : key === 'doors' ? [] : undefined;
+    const before = none === undefined ? previous[key] : previous[key] ?? none;
+    const after = none === undefined ? next[key] : next[key] ?? none;
+    if (sameValue(before, after)) continue;
+    (patch.set as AnyRecord)[key] = after;
     changed = true;
   }
   for (const key of SCENE_RECORD_KEYS) {
