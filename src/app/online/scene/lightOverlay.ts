@@ -9,8 +9,9 @@
  * light, colour or wall beyond the cells around their sight. Where a cell is seen, the darker its light the more black is laid
  * over it (a token seeing in the dark still sees, dimly), and the lights reaching it tint it with their colours.
  */
-import { insideSpans } from '../../../../packages/atlas-host/src/lighting/darknessRaster';
+import { insideSpans, sightRaster } from '../../../../packages/atlas-host/src/lighting/darknessRaster';
 import type { LightReach, Polygon } from '../../../../packages/atlas-host/src/lighting/visionRules';
+import { softenMask } from '../view/layers/softDarkness';
 import type { FrameLight } from './lightingFrame';
 import { SCENE_LIMITS } from './sceneLimits';
 import type { MapSize, PlayerGlow } from './sceneTypes';
@@ -26,6 +27,13 @@ export const DARK_SHADE = 0.78;
 export const MEMORY_SHADE = 0.6;
 /** How strongly a light's colour tints what it lights, at most. */
 export const LIGHT_TINT = 0.32;
+/**
+ * The darkness mask's long side, in pixels (`darkPixels`), fewer where its PNG would not fit `SCENE_LIMITS.darkImage`:
+ * finer than the darkness cells, so the edge seen ground makes along a wall follows the wall.
+ */
+export const DARK_CELLS_PER_SIDE = [768, 512, 384] as const;
+/** The finer darkness's blur, as a share of a grid cell: a soft edge, and little of the dark side through it. */
+export const DARK_SOFTNESS = 0.15;
 
 /** A light's colour (0–255 each) and strength, where the scene has a light or a carried light. */
 export interface LightSource {
@@ -210,6 +218,35 @@ function besideSeen({ cols, rows, seen }: FrameLight): Uint8Array {
   return near;
 }
 
+/**
+ * Where players see the map, finer than the darkness cells, as black with a soft alpha (`softenMask`): clear where a
+ * token's sight shows the map now, worked out again on the mask's own pixels by the same rules (`sightRaster`), so its
+ * edge follows walls and the reach of light rather than cell-sized stairs; clear over a cell only the explored memory
+ * shows; dark everywhere else. Without the sight to read, the cells decide alone. `softness`: the blur's spread, in world
+ * pixels.
+ */
+export function darkPixels(light: FrameLight, map: MapSize, softness: number, cellsPerSide: number = DARK_CELLS_PER_SIDE[0]): OverlayPixels | null {
+  if (!(map.width > 0) || !(map.height > 0) || !(light.cellSize > 0)) return null;
+  const size = Math.max(map.width, map.height) / cellsPerSide;
+  const fine = light.sight ? sightRaster({ sight: light.sight, ambient: light.ambient, reaches: light.reaches }, map, size) : null;
+  const cols = fine?.cols ?? Math.max(1, Math.ceil(map.width / size));
+  const rows = fine?.rows ?? Math.max(1, Math.ceil(map.height / size));
+  const mask = new Float32Array(cols * rows).fill(1);
+  for (let row = 0; row < rows; row++) {
+    const cellRow = Math.floor(((row + 0.5) * size) / light.cellSize);
+    for (let col = 0; col < cols; col++) {
+      const index = row * cols + col;
+      const cellCol = Math.floor(((col + 0.5) * size) / light.cellSize);
+      if (cellRow >= light.rows || cellCol >= light.cols) continue;
+      const cell = cellRow * light.cols + cellCol;
+      const remembered = light.shown[cell] === 1 && light.seen[cell] !== 1;
+      const seen = fine ? fine.seen[index] === 1 : light.shown[cell] === 1;
+      if (remembered || seen) mask[index] = 0;
+    }
+  }
+  return softenMask(mask, cols, rows, Math.max(1, Math.round(softness / size)));
+}
+
 /** The pixels as a PNG data URL through a canvas; null where none can be made (no DOM, no 2D context). */
 export function encodePng(pixels: OverlayPixels, doc: CanvasDocument | undefined = typeof window === 'undefined' ? undefined : window.document): string | null {
   if (!doc) return null;
@@ -251,7 +288,17 @@ export function lightOverlay(light: FrameLight, objects: { lights?: unknown; tok
       break;
     }
   }
-  const lighting = image ? Object.freeze({ image }) : null;
+  let dark: string | null = null;
+  for (const cells of image ? DARK_CELLS_PER_SIDE : []) {
+    const pixels = darkPixels(light, map, within * DARK_SOFTNESS, cells);
+    const encoded = pixels ? encode(pixels) : null;
+    if (!encoded) break;
+    if (encoded.length <= SCENE_LIMITS.darkImage) {
+      dark = encoded;
+      break;
+    }
+  }
+  const lighting = image ? Object.freeze({ image, ...(dark ? { dark } : {}) }) : null;
   made.set(light, { sources: key, width: map.width, height: map.height, lighting });
   return lighting;
 }

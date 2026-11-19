@@ -67,6 +67,15 @@ export function darknessRaster(lighting: Lighting, map: MapSize, maxCellsPerSide
   return samples.cellSize === cellSize ? samples : coarsened(samples, cellSize);
 }
 
+/**
+ * Where a token's sight shows the map now, on cells of any size (`seen`, 1 seen): the same rules as `darknessRaster`, by
+ * cell centres, without the explored memory. Finer than the darkness raster, for drawing its edge (Connect's online
+ * darkness), never for deciding what players get.
+ */
+export function sightRaster(lighting: Lighting, map: MapSize, cellSize: number): DarknessRaster {
+  return sampledRaster(lighting, null, map, cellSize);
+}
+
 function emptyRaster(map: MapSize, cellSize: number): DarknessRaster {
   const cols = Math.max(1, Math.ceil(map.width / cellSize));
   const rows = Math.max(1, Math.ceil(map.height / cellSize));

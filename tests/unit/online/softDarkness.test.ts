@@ -64,3 +64,27 @@ describe('the soft darkness', () => {
     expect(softDarkness([], MAP)).toBeNull();
   });
 });
+
+describe('the GM\'s finer darkness on the page', () => {
+  it('stands in for the darkness fog once decoded, drawn over the map; the soft outline until then', async () => {
+    let finish: (image: HTMLImageElement) => void = () => undefined;
+    const layer = new FogLayer(() => new Promise<HTMLImageElement>((resolve) => { finish = resolve; }));
+    const scene = playerScene({
+      map: { asset: null, width: MAP.width, height: MAP.height, cellSize: 48 },
+      fog: { f1: fogRect(1), [DARKNESS_FOG_ID]: { type: 'lasso', erase: false, order: DARKNESS_ORDER, points: staircase(16) } },
+      glow: { image: 'data:image/png;base64,AAAA', dark: 'data:image/png;base64,BBBB' },
+    });
+    const first = new RecordingSurface();
+    layer.draw(first, frame(scene));
+    expect(first.layers.flatMap((each) => each.calls).map((call) => call.op)).toContain('raster');
+    expect(layer.animating()).toBe(true);
+    const mask = { naturalWidth: 256, naturalHeight: 256 } as HTMLImageElement;
+    finish(mask);
+    await Promise.resolve();
+    const second = new RecordingSurface();
+    layer.draw(second, frame(scene));
+    expect(second.layers.flatMap((each) => each.calls).map((call) => call.op)).not.toContain('raster');
+    expect(second.calls.at(-1)).toMatchObject({ op: 'image', image: mask, x: 0, y: 0, width: 512, height: 512 });
+    expect(layer.animating()).toBe(false);
+  });
+});

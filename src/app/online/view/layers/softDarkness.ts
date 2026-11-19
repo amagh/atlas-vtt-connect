@@ -62,7 +62,15 @@ export function softDarkness(points: readonly ScenePoint[], map: MapSize): SoftD
   }
   // A darkness without stairs (one rectangle) is still eased: as if its stair were two mask pixels.
   const stair = stairOf(points, map) ?? 2 * pixel;
-  const radius = Math.max(1, Math.round((BLUR_STAIRS * stair) / pixel));
+  const image = softenMask(mask, width, height, Math.max(1, Math.round((BLUR_STAIRS * stair) / pixel)));
+  return { image, width: width * pixel, height: height * pixel };
+}
+
+/**
+ * `mask` (1 dark, 0 seen; consumed) blurred by three box passes of `radius` pixels, as black with the soft alpha: none up
+ * to `CLEAR_UP_TO`, so the ramp lies on the dark side. Shared by the page's darkness and the GM's finer mask (`lightOverlay`).
+ */
+export function softenMask(mask: Float32Array, width: number, height: number, radius: number): RasterImage {
   const scratch = new Float32Array(Math.max(width, height));
   for (let pass = 0; pass < PASSES; pass++) {
     for (let row = 0; row < height; row++) boxBlur(mask, row * width, 1, width, radius, scratch);
@@ -73,7 +81,7 @@ export function softDarkness(points: readonly ScenePoint[], map: MapSize): SoftD
     const t = Math.min(1, Math.max(0, (mask[index]! - CLEAR_UP_TO) / (1 - CLEAR_UP_TO)));
     data[index * 4 + 3] = Math.round(t * t * (3 - 2 * t) * 255);
   }
-  return { image: { data, width, height }, width: width * pixel, height: height * pixel };
+  return { data, width, height };
 }
 
 /**

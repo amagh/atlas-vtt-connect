@@ -304,7 +304,8 @@ export function playerVisibilityApi(deps: PlayerVisibilityDeps): LightingApi {
     const only = typeof options?.onlyToken === 'string' ? options.onlyToken : null;
     // A point of view shows what that token sees now, and none of what the party remembers.
     const explored = sight.all || only !== null ? null : memory;
-    const grid = raster(view.viewId, cellsPerSide(options?.maxCellsPerSide), { sight: only === null ? sight : sightOf(sight, only), ambient, reaches }, map, explored, only ?? '');
+    const seenBy = only === null ? sight : sightOf(sight, only);
+    const grid = raster(view.viewId, cellsPerSide(options?.maxCellsPerSide), { sight: seenBy, ambient, reaches }, map, explored, only ?? '');
     reasons.delete(view.viewId);
     // A fresh buffer on every call: the raster is kept between calls, and no caller may change it for another.
     const shown = new Uint8Array(grid.dark.length);
@@ -314,7 +315,7 @@ export function playerVisibilityApi(deps: PlayerVisibilityDeps): LightingApi {
       tokens: Object.freeze(tokens),
       darkness: Object.freeze({ cellSize: grid.cellSize, cols: grid.cols, rows: grid.rows, shown }),
       showsExplored: explored !== null,
-      light: Object.freeze({ seen: grid.seen.slice(), ambient, reaches }),
+      light: Object.freeze({ seen: grid.seen.slice(), ambient, reaches, sight: seenBy }),
     });
   };
 
