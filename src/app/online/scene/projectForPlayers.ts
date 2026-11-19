@@ -18,6 +18,7 @@ import { mapMatrix, type MapAlignment } from './mapPlacement';
 import { projectLiquids } from './projectLiquids';
 import { projectMeasures } from './projectMeasures';
 import { closedFrame, type LightingFrame } from './lightingFrame';
+import { lightOverlay } from './lightOverlay';
 import { DEFAULT_GRID_SIZE, tokenBounds } from './objectBounds';
 import type { PlayerViewRules } from './playerViewRules';
 import { projectInitiative, projectWidgets, withCombatantSides } from './projectPanels';
@@ -154,6 +155,8 @@ export function projectForPlayers(state: ProjectionInput, context: ProjectionCon
     // Only where the snapshot has pins (a stock Atlas's): an Atlas API's have none, and its stream stays as it was.
     ...(hasPins(objects) ? { pins: closed ? [] : projectPins(objects, visible, cellSize) } : {}),
     ...(context.handout !== undefined ? { handout: context.handout && !curtained ? { asset: context.assets.idFor(context.handout.path), title: context.handout.title } : null } : {}),
+    // Only while lighting hides something, by Atlas's answer; the diff sends null once it stops (`diffScenes`).
+    ...(lighting ? { glow: !closed && lighting.light ? lightOverlay(lighting.light, objects, context.mapSize, cellSize) : null } : {}),
   };
 }
 

@@ -48,6 +48,11 @@ export const SCENE_LIMITS = {
   /** Atlas 0.15's `MAX_MOVEMENT_STEPS` and `MAX_STEP_NAME`. */
   movementSteps: 4,
   stepName: 24,
+  /**
+   * The light picture's data URL (`PlayerGlow.image`), in characters: a small part of a message, which the rest of a
+   * snapshot shares, so a scene with its light still fits one.
+   */
+  glowImage: 64 * 1024,
 } as const;
 
 type Range = readonly [min: number, max: number];
