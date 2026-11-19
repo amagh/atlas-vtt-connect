@@ -3,7 +3,8 @@
  * door the sender was sent (`PlayerScene.doors`, so one they see) on the scene they have, at most
  * `DOOR_REQUESTS_PER_SECOND` a second, and one waiting answer per door at a time. The GM gets a notice; on Allow the
  * door is found again in the scene the GM's view shows now and turned through Atlas's own store (a locked door is
- * unlocked first: the GM allowed it). Nothing changes without the GM's Allow. A `GmSession` handler.
+ * unlocked first: the GM allowed it). Nothing changes without the GM's Allow. Secret doors, which have no badge on
+ * Atlas's player window, are never asked for. A `GmSession` handler.
  */
 import type { SessionHandler, SessionPlayer } from '../GmSession';
 import type { ControlMessage } from '../protocol';
@@ -46,7 +47,7 @@ const sameOpening = (a: Pick<PlayerDoor, 'x1' | 'y1' | 'x2' | 'y2'>, b: Pick<Pla
 interface WallRecord {
   id?: unknown;
   type?: unknown;
-  closed?: unknown;
+  locked?: unknown;
   p1?: { x?: unknown; y?: unknown };
   p2?: { x?: unknown; y?: unknown };
 }
@@ -78,12 +79,16 @@ export class DoorRequests implements SessionHandler {
     if (!slot || !scene || scene.sceneId !== message.sceneId) return;
     // Only a door this player was sent: one they see, as they see it.
     const door = (scene.doors ?? []).find((each) => sameOpening(each, message));
-    if (!door) return;
+    // A secret door has no badge to ask with, as on Atlas's player window.
+    if (!door || door.secret) return;
     const key = keyOf(scene.sceneId, door);
     if (this.waiting.has(key)) return;
-    const question = this.options.ask({ player: player.name, opening: !door.open, locked: door.locked === true }, (allow) => {
+    // Players are never told a door is locked (Atlas shows them no lock); the GM is.
+    const locked = this.wallAt(slot.sceneId, message)?.locked === true;
+    const question = this.options.ask({ player: player.name, opening: !door.open, locked }, (allow) => {
       this.waiting.delete(key);
-      if (allow) this.turn(slot.sceneId, slot.tab.viewId, message);
+      const wall = allow ? this.wallAt(slot.sceneId, message) : null;
+      if (wall) this.options.doors?.toggle(slot.tab.viewId, wall.id, true);
     });
     this.waiting.set(key, { playerId: player.playerId, hide: () => question.hide() });
   }
@@ -99,19 +104,17 @@ export class DoorRequests implements SessionHandler {
     }
   }
 
-  /** Turns the door, found again in what the GM's view holds now: nothing when it moved, went or Atlas is on another map. */
-  private turn(sceneId: string, viewId: string, request: DoorRequest): void {
+  /** The door at the request's opening in what the GM's view holds now; null when it moved, went or Atlas is on another map. */
+  private wallAt(sceneId: string, request: DoorRequest): { id: string; locked: boolean } | null {
     const snapshot = this.options.projection.shownSnapshot(sceneId);
     const walls = (snapshot?.objects as { walls?: unknown } | undefined)?.walls;
-    if (!walls || typeof walls !== 'object') return;
+    if (!walls || typeof walls !== 'object') return null;
     for (const raw of Object.values(walls as Record<string, unknown>)) {
       const wall = raw as WallRecord;
-      if (typeof wall.id !== 'string' || (wall.type !== 'door' && !(wall.type === 'secret-door' && wall.closed === false))) continue;
+      if (typeof wall.id !== 'string' || wall.type !== 'door') continue;
       const { p1, p2 } = wall;
-      if (p1?.x === request.x1 && p1.y === request.y1 && p2?.x === request.x2 && p2.y === request.y2) {
-        this.options.doors?.toggle(viewId, wall.id, true);
-        return;
-      }
+      if (p1?.x === request.x1 && p1.y === request.y1 && p2?.x === request.x2 && p2.y === request.y2) return { id: wall.id, locked: wall.locked === true };
     }
+    return null;
   }
 }

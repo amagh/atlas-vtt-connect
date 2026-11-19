@@ -432,8 +432,8 @@ export interface PlayerDoor {
   x2: number;
   y2: number;
   open: boolean;
-  /** The GM locked it: a player may still ask, and the GM decides. */
-  locked?: true;
+  /** A secret door, sent only while open: drawn, but with no badge and not to be asked for, as on Atlas's player window. */
+  secret?: true;
 }
 
 /**

@@ -6,6 +6,7 @@
  */
 import tokenRingUrl from '../../assets/token-ring.webp';
 import type { ScenePoint } from '../scene/sceneTypes';
+import { DOOR_GLYPH_PATHS, type DoorGlyph } from './doorGlyphs';
 import { MAP_ICON_BOX, mapIconPaths } from './mapIconPaths';
 import { WIDGET_ICON_PATHS, type WidgetIcon } from '../../types/widgetIcons';
 import { PIN_ICON_PATHS, type PinIconId } from './pinIcons';
@@ -47,11 +48,13 @@ function pinIconPath(name: string): Path2D | null {
   return path;
 }
 
+/** A widget or condition icon, or one of Atlas's door badge glyphs (`doorGlyphs.ts`), which share their box. */
 function widgetIconPath(name: string): Path2D | null {
-  if (!Object.hasOwn(WIDGET_ICON_PATHS, name)) return null;
+  const door = Object.hasOwn(DOOR_GLYPH_PATHS, name);
+  if (!door && !Object.hasOwn(WIDGET_ICON_PATHS, name)) return null;
   let path = widgetIcons.get(name);
   if (!path) {
-    path = new Path2D(WIDGET_ICON_PATHS[name as WidgetIcon]);
+    path = new Path2D(door ? DOOR_GLYPH_PATHS[name as DoorGlyph] : WIDGET_ICON_PATHS[name as WidgetIcon]);
     widgetIcons.set(name, path);
   }
   return path;

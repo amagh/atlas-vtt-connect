@@ -326,7 +326,7 @@ function isPlayerGlow(value: unknown): boolean {
 function isPlayerDoors(value: unknown): boolean {
   return Array.isArray(value) && value.length <= SCENE_LIMITS.doors && value.every((door) => isFields(door)
     && isCoordinate(door.x1) && isCoordinate(door.y1) && isCoordinate(door.x2) && isCoordinate(door.y2) && typeof door.open === 'boolean'
-    && (door.locked === undefined || door.locked === true));
+    && (door.secret === undefined || door.secret === true));
 }
 
 const FIELD_CHECKS: Record<SceneFieldKey, Check> = {

@@ -409,6 +409,8 @@ export class PlayerTools implements TokenGrab {
     let best: PlayerDoor | null = null;
     let reach = Math.max((this.scene?.map.cellSize ?? 70) / 5, DOOR_PRESS_PIXELS / Math.max(this.options.zoom(), 1e-6));
     for (const door of doors) {
+      // A secret door has no badge: players cannot ask for it.
+      if (door.secret) continue;
       const distance = segmentDistance(at, door);
       if (distance <= reach) {
         best = door;

@@ -8,7 +8,8 @@ import type { PlayerDoor } from '../../../src/app/online/scene/sceneTypes';
 import { DoorRequests, type DoorAsk } from '../../../src/app/online/tools/DoorRequests';
 import { TokenMoves } from '../../../src/app/online/view/TokenMoves';
 import { PlayerTools } from '../../../src/app/online/view/tools/PlayerTools';
-import { createDoorsLayer, DOOR_LOCK, DOOR_WOOD } from '../../../src/app/online/view/layers/doorsLayer';
+import { BADGE_COLOR, createDoorBadgesLayer } from '../../../src/app/online/view/layers/doorBadgesLayer';
+import { createDoorsLayer, DOOR_WOOD } from '../../../src/app/online/view/layers/doorsLayer';
 import { project, projectLit, ready, scene } from './lightingFixtures';
 import { frame, RecordingSurface } from './recordingSurface';
 import { playerScene, sceneBody } from './sceneFixtures';
@@ -25,7 +26,7 @@ describe('doors for players', () => {
     expect(projected.doors).toEqual([
       { x1: 200, y1: 300, x2: 200, y2: 370, open: true },
       { x1: 500, y1: 300, x2: 500, y2: 370, open: false },
-      { x1: 600, y1: 300, x2: 600, y2: 370, open: true },
+      { x1: 600, y1: 300, x2: 600, y2: 370, open: true, secret: true },
     ]);
   });
 
@@ -65,10 +66,13 @@ describe('the doors layer', () => {
     expect(strokes.at(-1)?.paths).toEqual([[{ x: 300, y: 100 }, { x: 300, y: 170 }]]);
   });
 
-  it('marks a locked door with a lock', () => {
+  it('badges each door players may ask for with Atlas\'s glyph, a secret door with none', () => {
     const surface = new RecordingSurface();
-    createDoorsLayer().draw(surface, frame(playerScene({ doors: [{ x1: 100, y1: 100, x2: 170, y2: 100, open: false, locked: true }] })));
-    expect(surface.calls.at(-1)).toMatchObject({ op: 'circle', x: 135, y: 100, style: { fill: DOOR_LOCK } });
+    createDoorBadgesLayer().draw(surface, frame(playerScene({ doors: [
+      { x1: 100, y1: 100, x2: 170, y2: 100, open: false }, { x1: 300, y1: 100, x2: 370, y2: 100, open: true }, { x1: 500, y1: 100, x2: 570, y2: 100, open: true, secret: true },
+    ] })));
+    const glyphs = surface.calls.filter((call) => call.op === 'glyph') as Array<{ name: string; x: number; color: string }>;
+    expect(glyphs.map(({ name, x, color }) => [name, x, color])).toEqual([['door-closed', 135, BADGE_COLOR], ['door-open', 335, BADGE_COLOR]]);
   });
 
   it('draws nothing without doors', () => {
@@ -86,8 +90,8 @@ function requests(options: { locked?: boolean; held?: boolean } = {}) {
   let handler: SessionHandler | null = null;
   const asks: Array<{ question: DoorAsk; answer: (allow: boolean) => void; hidden: boolean }> = [];
   const toggle = vi.fn(() => true);
-  const sent = playerScene({ doors: [{ ...OPENING, open: false, ...(options.locked ? { locked: true as const } : {}) }] });
-  const shown = { objects: { walls: { w1: { id: 'w1', type: 'door', closed: true, p1: { x: 200, y: 300 }, p2: { x: 200, y: 370 } }, w2: { id: 'w2', type: 'solid', p1: { x: 0, y: 0 }, p2: { x: 0, y: 70 } } } } };
+  const sent = playerScene({ doors: [{ ...OPENING, open: false }] });
+  const shown = { objects: { walls: { w1: { id: 'w1', type: 'door', closed: true, ...(options.locked ? { locked: true } : {}), p1: { x: 200, y: 300 }, p2: { x: 200, y: 370 } }, w2: { id: 'w2', type: 'solid', p1: { x: 0, y: 0 }, p2: { x: 0, y: 70 } } } } };
   const doors = new DoorRequests({
     session: { use: (h: SessionHandler) => { handler = h; return () => undefined; } } as never,
     projection: { slotOf: () => ({ sceneId: sent.sceneId, lastSent: sent, tab: { viewId: 'v1' } }), shownSnapshot: () => (options.held === false ? null : shown) } as never,
