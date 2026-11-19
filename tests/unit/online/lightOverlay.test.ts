@@ -8,7 +8,8 @@ import { diffScenes } from '../../../src/app/online/scene/sceneDiff';
 import { decodeControl } from '../../../src/app/online/protocol';
 import { createGlowLayer } from '../../../src/app/online/view/layers/glowLayer';
 import { frame, RecordingSurface } from './recordingSurface';
-import { playerScene } from './sceneFixtures';
+import { playerScene, sceneBody } from './sceneFixtures';
+import { PlayerSceneMirror } from '../../../src/app/online/scene/PlayerSceneMirror';
 import { ready, testLighting } from './lightingFixtures';
 
 const MAP = { width: 192, height: 96 };
@@ -191,5 +192,14 @@ describe('the light picture\'s size', () => {
     widths.length = 0;
     expect(lightOverlay({ ...torchLight }, {}, { width: 1920, height: 960 }, 10, fitsAt(1))).toBeNull();
     expect(widths).toEqual([192, 128, 64]);
+  });
+});
+
+describe('a player joining a lit scene', () => {
+  it('gets its light with the snapshot, not only with a later patch', () => {
+    const glow = { image: 'data:image/png;base64,iVBORw0KGgo=' };
+    const mirror = new PlayerSceneMirror({ sendResync: () => undefined, onChange: () => undefined });
+    mirror.receive({ v: 1, type: 'scene-snapshot', seq: 1, scene: sceneBody(playerScene({ glow })), fogParts: 0, drawingParts: 0 });
+    expect(mirror.scene?.glow).toEqual(glow);
   });
 });
