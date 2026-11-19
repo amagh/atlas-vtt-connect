@@ -185,3 +185,12 @@ describe('a tap on a door', () => {
     expect(asked).toHaveLength(1);
   });
 });
+
+describe('a closed door', () => {
+  it('is seen from the side a token stands on, though sight stops at it', () => {
+    // Sight ends at the door's line (x = 500): the cell on it is half dark, the one before it seen.
+    const state = walled({ a: wall('a', 'door', 500), b: wall('b', 'door', 900) }, true);
+    const seen = projectLit(state, ready({ hero: 'seen' }, (x) => x < 496));
+    expect(seen.doors).toEqual([{ x1: 500, y1: 300, x2: 500, y2: 370, open: false }]);
+  });
+});

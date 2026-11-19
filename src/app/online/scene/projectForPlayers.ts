@@ -155,7 +155,7 @@ export function projectForPlayers(state: ProjectionInput, context: ProjectionCon
     // Only where the snapshot has pins (a stock Atlas's): an Atlas API's have none, and its stream stays as it was.
     ...(hasPins(objects) ? { pins: closed ? [] : projectPins(objects, visible, cellSize) } : {}),
     // Only while players see a door; the diff sends [] once they see none (`diffScenes`).
-    ...withDoors(closed ? [] : projectDoors(objects, visible)),
+    ...withDoors(closed ? [] : projectDoors(objects, visible, cellSize)),
     ...(context.handout !== undefined ? { handout: context.handout && !curtained ? { asset: context.assets.idFor(context.handout.path), title: context.handout.title } : null } : {}),
     // Only while lighting hides something, by Atlas's answer; the diff sends null once it stops (`diffScenes`).
     ...(lighting ? { glow: !closed && lighting.light ? lightOverlay(lighting.light, objects, context.mapSize, cellSize) : null } : {}),
@@ -201,6 +201,21 @@ function listedTokenIds(sent: Readonly<Record<string, unknown>>, tokens: Readonl
   return ids;
 }
 
+/** How far from a door's middle, in grid cells, it is looked at from each side. */
+const DOOR_SIDE_CELLS = [0.25, 0.5] as const;
+
+/**
+ * Whether players see a door: its middle, or a point just off it on either side. A closed door stops sight, so the
+ * darkness cell on its line is half dark and never counts as seen; from the side a token stands on, the door shows.
+ */
+function doorSeen(p1: ScenePoint, p2: ScenePoint, visible: Shows, cellSize: number): boolean {
+  const middle = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+  const length = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+  const normal = { x: -(p2.y - p1.y) / length, y: (p2.x - p1.x) / length };
+  const at = (offset: number) => ({ x: middle.x + normal.x * offset, y: middle.y + normal.y * offset, width: 0, height: 0 });
+  return visible.shows(at(0)) || DOOR_SIDE_CELLS.some((cells) => visible.shows(at(cells * cellSize)) || visible.shows(at(-cells * cellSize)));
+}
+
 const withDoors = (doors: PlayerDoor[]): { doors?: PlayerDoor[] } => (doors.length > 0 ? { doors } : {});
 
 const coordinate = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value);
@@ -212,10 +227,10 @@ const endOf = (value: unknown): ScenePoint | null => {
 
 /**
  * The doors players see, as Tabletop's board gets them (`projectBoard`): a door, or a secret door while it is open (a
- * closed one is plain wall), where players see its middle. Only its opening and whether it is open; sorted by place so
+ * closed one is plain wall), where players see its middle from either side (`doorSeen`). Only its opening and whether it is open; sorted by place so
  * the list compares equal while nothing moves.
  */
-function projectDoors(objects: unknown, visible: Shows): PlayerDoor[] {
+function projectDoors(objects: unknown, visible: Shows, cellSize: number): PlayerDoor[] {
   const record = (objects as { walls?: unknown } | undefined)?.walls;
   const walls = Array.isArray(record) ? record : typeof record === 'object' && record !== null ? Object.values(record) : [];
   const doors: PlayerDoor[] = [];
@@ -227,8 +242,7 @@ function projectDoors(objects: unknown, visible: Shows): PlayerDoor[] {
     const p1 = endOf(wall.p1);
     const p2 = endOf(wall.p2);
     if (!p1 || !p2 || (p1.x === p2.x && p1.y === p2.y)) continue;
-    const middle = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2, width: 0, height: 0 };
-    if (!visible.shows(middle)) continue;
+    if (!doorSeen(p1, p2, visible, cellSize)) continue;
     const at = (value: number): number => finiteOr(value, 0, SCENE_RANGES.coordinate);
     doors.push({ x1: at(p1.x), y1: at(p1.y), x2: at(p2.x), y2: at(p2.y), open, ...(wall.locked === true ? { locked: true as const } : {}) });
   }
