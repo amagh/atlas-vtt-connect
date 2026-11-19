@@ -12,7 +12,7 @@ import { coverageOfFog, createDefaultInitiativeState, projectForPlayers, snapsho
 const SECRETS = ['Ghost Rider', 'Fog Orc', 'Offmap Lich', 'Hidden Statblock Name'];
 
 const at = (id: string, x: number, name: string, extra: Partial<Character> = {}): Character =>
-  ({ id, kind: 'character', x, y: 200, imagePath: `atlas-vtt/assets/${id}.png`, name, resources: { hp: { current: 3, max: 9 } }, ...extra }) as Character;
+  ({ id, kind: 'character', showNameplate: true, x, y: 200, imagePath: `atlas-vtt/assets/${id}.png`, name, resources: { hp: { current: 3, max: 9 } }, ...extra }) as Character;
 
 const fogLeft: FogCoverage = coverageOfFog({
   f: { id: 'f', kind: 'fog', type: 'rectangle', timestamp: 1, isErasing: false, x: 0, y: 0, width: 500, height: 500 } satisfies FogOperation,

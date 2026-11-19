@@ -44,7 +44,7 @@ import { createDefaultInitiativeState, fogRect, playerScene } from './sceneFixtu
 type SceneState = ViewState & { camera: { x: number; y: number; scale: number } };
 
 function character(id: string, x: number, overrides: Partial<Character> = {}): Character {
-  return { id, kind: 'character', x, y: 140, imagePath: `art/${id}.png`, name: id, resources: { hp: { current: 7, max: 10 } }, ...overrides };
+  return { id, kind: 'character', x, y: 140, imagePath: `art/${id}.png`, name: id, showNameplate: true, resources: { hp: { current: 7, max: 10 } }, ...overrides };
 }
 
 function sceneState(tokens: Record<string, Character>, fog: Record<string, FogOperation> = {}): SceneState {

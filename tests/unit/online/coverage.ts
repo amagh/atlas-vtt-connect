@@ -68,7 +68,7 @@ export const TOKEN_FIELD_COVERAGE: CoverageTable<KeysOfUnion<TokenEntity>> = {
   // The bars the window draws (`projectBars`), and whether the token is downed; the collection's definitions decide which (`RESOURCE_DEFINITION_COVERAGE`).
   resources: SENT,
   overriddenMax: gmOnly('records which maximums the GM set by hand; the values it protects are what players see'),
-  showNameplate: gmOnly('players see nameplates by the Show nameplates player view setting, as in the player window'),
+  showNameplate: used('with the map\'s Show nameplates, decides whether players get the name on the token and in the list, as in the player window (`nameplateShown`)'),
   tags: gmOnly('tags organise the GM\'s tokens'),
   notePath: gmOnly('note links stay on the GM\'s machine'),
   difficulty: gmOnly('the statblock rating is shown to the GM only'),

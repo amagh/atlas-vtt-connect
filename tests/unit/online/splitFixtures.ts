@@ -36,7 +36,7 @@ export const TOKEN: Record<TabId, string> = { a: 'ambushorc', b: 'bridgetroll', 
 export const MAP = { width: 2000, height: 1500 };
 
 export function character(id: string, x: number, y = 140, overrides: Partial<Character> = {}): Character {
-  return { id, kind: 'character', x, y, imagePath: `art/${id}.png`, name: id, ...overrides };
+  return { id, kind: 'character', x, y, imagePath: `art/${id}.png`, name: id, showNameplate: true, ...overrides };
 }
 
 /** A tab's scene, loaded: its own token (`TOKEN`) and anything given. */

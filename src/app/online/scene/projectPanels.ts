@@ -28,7 +28,22 @@ function hpShareOf(tokens: Readonly<Record<string, TokenEntity>>, tokenId: strin
 }
 
 type WidgetState = Pick<SceneSnapshot, 'widgets'>;
-type InitiativeState = Pick<SceneSnapshot, 'initiative' | 'initiativeTrackerOpen'>;
+type InitiativeState = Pick<SceneSnapshot, 'initiative' | 'initiativeTrackerOpen'> & {
+  /** The map's token settings: whether it shows every token's nameplate (`nameplateShown`). */
+  tokenSettings?: { showNameplates?: boolean | undefined };
+};
+
+/** What Atlas's player window calls a combatant whose nameplate players do not see (`token.unknownCreature`). */
+export const UNKNOWN_CREATURE = 'Unknown Creature';
+
+/**
+ * Whether players see a token's nameplate, as Atlas's player window decides it (`qle`): the GM shows players
+ * nameplates, and the map shows every token's (`tokenSettings.showNameplates`) or this token shows its own
+ * (Edit Token's Show nameplate). Shared by the tokens and the initiative list, so neither gives away a hidden name.
+ */
+export function nameplateShown(token: unknown, mapShowsNameplates: boolean, rules: Pick<PlayerViewRules, 'showTokenNameplates'>): boolean {
+  return rules.showTokenNameplates && (mapShowsNameplates || (token as { showNameplate?: unknown } | undefined)?.showNameplate === true);
+}
 
 export function projectWidgets(state: WidgetState, rules: PlayerViewRules): PlayerWidget[] {
   const settings = state.widgets.settings;
@@ -128,6 +143,7 @@ export function projectInitiative(
   // Atlas 0.9's fight by cards: a combatant's number is the card it was dealt, as Atlas's players' list shows it.
   const byCards = combat && isRecord((initiative as { cards?: unknown }).cards);
   const tokens = state.objects?.tokens ?? {};
+  const mapNameplates = state.tokenSettings?.showNameplates === true;
   const listedUnder = new Set<string>();
   const entries = (Array.isArray(initiative.entries) ? initiative.entries : [])
     .filter((entry) => typeof entry === 'object' && entry !== null && isSceneId(entry.id) && visibleTokenIds.has(entry.tokenId))
@@ -146,7 +162,10 @@ export function projectInitiative(
         id: entry.id,
         tokenId: entry.tokenId,
         initiative: sides ? 0 : finiteOr(byCards ? (entry as { card?: unknown }).card : entry.initiative, 0),
-        name: rules.showTokenNameplates ? textOrNull(entry.name) : null,
+        // As Atlas's players' list names it: hidden names read as an unknown creature, and none at all without nameplates.
+        name: rules.showTokenNameplates
+          ? (nameplateShown(Object.hasOwn(tokens, entry.tokenId) ? tokens[entry.tokenId] : undefined, mapNameplates, rules) ? textOrNull(entry.name) : UNKNOWN_CREATURE)
+          : null,
         // Entries keep no HP since Atlas 0.5: the bar is the token's `hp` resource, as the player window draws it.
         hp: null,
         hpShare: hpShareOf(tokens, entry.tokenId, definitions, resourceShows),

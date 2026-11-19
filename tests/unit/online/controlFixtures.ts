@@ -23,10 +23,10 @@ import { pathPresenter, pathTabs } from './hubPath';
 /** hero and ally in the open, orc hidden, goblin under the fog rectangle from (900, 900) to (1300, 1300). */
 export function partyTokens(): Record<string, TokenEntity> {
   return {
-    hero: { id: 'hero', kind: 'character', x: 140, y: 140, imagePath: 'art/hero.png', name: 'Hero' },
-    ally: { id: 'ally', kind: 'character', x: 280, y: 140, imagePath: 'art/ally.png', name: 'Ally' },
-    orc: { id: 'orc', kind: 'character', x: 420, y: 140, imagePath: 'art/orc.png', name: 'Orc', isHidden: true },
-    goblin: { id: 'goblin', kind: 'character', x: 1050, y: 1050, imagePath: 'art/goblin.png', name: 'Goblin' },
+    hero: { id: 'hero', kind: 'character', showNameplate: true, x: 140, y: 140, imagePath: 'art/hero.png', name: 'Hero' },
+    ally: { id: 'ally', kind: 'character', showNameplate: true, x: 280, y: 140, imagePath: 'art/ally.png', name: 'Ally' },
+    orc: { id: 'orc', kind: 'character', showNameplate: true, x: 420, y: 140, imagePath: 'art/orc.png', name: 'Orc', isHidden: true },
+    goblin: { id: 'goblin', kind: 'character', showNameplate: true, x: 1050, y: 1050, imagePath: 'art/goblin.png', name: 'Goblin' },
   } as Record<string, TokenEntity>;
 }
 

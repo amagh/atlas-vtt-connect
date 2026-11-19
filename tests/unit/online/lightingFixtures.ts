@@ -80,7 +80,7 @@ export function fakeLighting(visibility: PlayerVisibility): Pick<LightingApi, 'p
 }
 
 export function character(id: string, x: number, y: number, overrides: Partial<Character> = {}): Character {
-  return { id, kind: 'character', x, y, imagePath: `art/${id}.png`, name: id, size: 1, ...overrides };
+  return { id, kind: 'character', x, y, imagePath: `art/${id}.png`, name: id, size: 1, showNameplate: true, ...overrides };
 }
 
 /** A scene saved lit (unless `lighting` says otherwise): the hero at (140, 400), on `MAP` with a 70 px grid. */

@@ -42,7 +42,7 @@ const TOKEN: Character = {
   resources: { hp: { current: 2, max: 10 }, stress: { current: 2, max: 6 } }, overriddenMax: ['hp'],
   difficulty: '3', notePath: 'notes/hero.md', statblockPath: 'statblocks/hero.md', statblockName: 'Hero',
   playerLinked: false, playerId: 'p1', playerCharacterId: 'c1', side: 'players',
-  tags: ['party'], vision: { enabled: true, range: 200 }, showNameplate: false, instanceNumber: 1,
+  tags: ['party'], vision: { enabled: true, range: 200 }, showNameplate: true, instanceNumber: 1,
   light: { bright: 20, dim: 40, color: '#ffcc88', intensity: 1, animation: 'none' },
 };
 const TEXT: TextElement = {
@@ -112,7 +112,7 @@ describe('coverage of token fields', () => {
       isHidden: set({ isHidden: true }), name: set({ name: 'Bob' }),
       statblockPath: ({ statblockPath: _path, ...token }) => token, statblockName: set({ statblockName: 'Orc' }),
       resources: set({ resources: { hp: { current: 3, max: 10 } } }), overriddenMax: set({ overriddenMax: [] }),
-      showNameplate: set({ showNameplate: true }), tags: set({ tags: ['secret'] }), notePath: set({ notePath: 'notes/other.md' }),
+      showNameplate: set({ showNameplate: false }), tags: set({ tags: ['secret'] }), notePath: set({ notePath: 'notes/other.md' }),
       difficulty: set({ difficulty: '5' }), side: set({ side: 'opponents' }),
       playerLinked: set({ playerLinked: true }), playerId: set({ playerId: 'p2' }), playerCharacterId: set({ playerCharacterId: 'c2' }),
       vision: set({ vision: { enabled: false } }), light: ({ light: _light, ...token }) => token,

@@ -16,7 +16,7 @@ const ALL_ON: PlayerViewRules = { showGrid: true, showTokenNameplates: true, sho
 const TURN_ORDER: InitiativeRules = { mode: 'turn-order', roll: '1d20', firstSide: 'players' };
 const SIDES: InitiativeRules = { mode: 'sides', roll: '1d20', firstSide: 'players' };
 
-const token = (id: string, overrides: Partial<Character> = {}): Character => ({ id, kind: 'character', x: 70, y: 70, imagePath: `${id}.png`, name: id, ...overrides });
+const token = (id: string, overrides: Partial<Character> = {}): Character => ({ id, kind: 'character', showNameplate: true, x: 70, y: 70, imagePath: `${id}.png`, name: id, ...overrides });
 const TOKENS: Record<string, Character> = {
   hero: token('hero', { side: 'players' }),
   // A creature that sees is the players' party unless the GM filed it elsewhere (`sideOf`)
